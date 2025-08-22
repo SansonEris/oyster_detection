@@ -1,0 +1,98 @@
+# ========================
+# PYTHON BASICS
+# ========================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.pyo
+*.pyd
+
+# Build / packaging
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# ========================
+# VIRTUAL ENVIRONMENTS
+# ========================
+.venv/
+venv/
+
+# ========================
+# LOGS & OUTPUTS
+# ========================
+logs/
+outputs/
+*.log
+*.mp4
+
+# ========================
+# DATASETS
+# ========================
+datasets/
+!datasets/README.dataset.txt
+!datasets/README.roboflow.txt
+!datasets/extracted/data.yaml
+
+# ========================
+# MODELS (pesanti)
+# ========================
+models/*.pt
+models/*.onnx
+models/*.torchscript
+
+# ========================
+# VIDEOS (grezzi)
+# ========================
+videos/
+!videos/README.md   # tieni un README per descrivere i video se serve
+
+# ========================
+# YOLO TRAINING RUNS
+# ========================
+yolov5/runs/
+wandb/
+yolov5/*.egg-info/
+
+# ========================
+# DOCKER
+# ========================
+docker-build-cache/
+# .dockerignore NON va ignorato (serve nel repo)
+
+# ========================
+# EDITORS / IDE
+# ========================
+.vscode/
+.idea/
+
+# ========================
+# OS FILES
+# ========================
+.DS_Store
+Thumbs.db
+
+# ========================
+# ARCHIVI / TEMP
+# ========================
+*.zip
+*.tar
+*.tar.gz
+*.rar
+*.7z
+*.tmp
+*.bak
