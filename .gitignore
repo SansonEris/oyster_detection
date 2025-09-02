@@ -1,41 +1,28 @@
-# Python bytecode
+# --- models: tieni solo questo file ---
+models/*
+!models/best_yolo8.onnx
+!videos/ostriche_acqua_recoaro_1/video_combined.mp4
+!videos/ostriche_acqua_recoaro_1/video_left.mp4
+!videos/ostriche_acqua_recoaro_1/video_right.mp4
+!models/.gitkeep
+
+# --- outputs e videos restano fuori ---
+outputs/*
+!outputs/.gitkeep
+videos/*
+!videos/.gitkeep
+
 __pycache__/
 *.py[cod]
-*.pyo
-*.pyd
-*.so
-
-# Virtual env
 .venv/
 venv/
 ENV/
 env/
-
-# IDE / editor
 .vscode/
 .idea/
-*.swp
-*.swo
-
-# OS
 .DS_Store
 Thumbs.db
-
-# ====== Project-specific ======
-
-# NON versionare output generati
-outputs/*
-!outputs/.gitkeep
-
-# NON versionare modelli pesanti
-models/*
-!models/.gitkeep
-
-# (se in futuro ricrei la cartella videos/, NON versionarla)
-videos/*
-!videos/.gitkeep
-
-# Chiavi/credenziali locali (rimuovi dal repo)
+*.log
 gitssh
 gitssh.pub
 id_rsa
@@ -45,6 +32,3 @@ id_ed25519.pub
 *.pem
 *.key
 *.ppk
-
-# Log
-*.log
