@@ -1,0 +1,463 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <title>Oyster Detection</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <style>
+    :root {
+      --bg-primary: #0a0e1a;
+      --bg-secondary: #0f1420;
+      --surface-glass: rgba(255, 255, 255, 0.04);
+      --surface-elevated: rgba(255, 255, 255, 0.08);
+      --surface-interactive: rgba(255, 255, 255, 0.12);
+      --text-primary: #ffffff;
+      --text-secondary: #b8c5d1;
+      --text-muted: #7a8699;
+      --accent-primary: #4facfe;
+      --accent-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+      --success: #22c55e;
+      --warning: #f59e0b;
+      --error: #ef4444;
+      --border-subtle: rgba(255, 255, 255, 0.08);
+      --border-interactive: rgba(255, 255, 255, 0.16);
+      --space-sm: 8px;
+      --space-md: 16px;
+      --space-lg: 24px;
+      --space-xl: 32px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      --radius-xl: 20px;
+      --radius-full: 9999px;
+      --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.25);
+      --shadow-glow: 0 0 24px rgba(79, 172, 254, 0.15);
+      --transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+      --transition-normal: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 15px;
+      line-height: 1.5;
+      color: var(--text-primary);
+      background: radial-gradient(circle at 20% 10%, rgba(79, 172, 254, 0.1) 0%, transparent 50%),
+                  radial-gradient(circle at 80% 90%, rgba(0, 242, 254, 0.08) 0%, transparent 50%),
+                  linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+      min-height: 100vh;
+      padding: var(--space-lg);
+    }
+    
+    .header {
+      max-width: 1200px;
+      margin: 0 auto var(--space-xl);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-lg);
+      flex-wrap: wrap;
+    }
+    
+    .brand { display: flex; align-items: center; gap: var(--space-md); }
+    
+    .logo {
+      width: 56px; height: 56px; display: grid; place-items: center;
+      background: var(--accent-gradient); border-radius: var(--radius-lg);
+      font-size: 28px; box-shadow: var(--shadow-md), var(--shadow-glow);
+    }
+    
+    .brand-text h1 {
+      font-size: 28px; font-weight: 700;
+      background: var(--accent-gradient); -webkit-background-clip: text; 
+      background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    
+    .subtitle { color: var(--text-secondary); font-size: 14px; font-weight: 500; }
+    
+    .status {
+      display: flex; align-items: center; gap: var(--space-sm);
+      padding: var(--space-md) var(--space-lg); background: var(--surface-glass);
+      border: 1px solid var(--border-subtle); border-radius: var(--radius-full);
+      backdrop-filter: blur(12px); font-size: 13px; box-shadow: var(--shadow-md);
+    }
+    
+    .container {
+      max-width: 1200px; margin: 0 auto;
+      display: grid; gap: var(--space-lg);
+    }
+    
+    .config-card {
+      background: var(--surface-glass); border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg); padding: var(--space-xl);
+      backdrop-filter: blur(12px); box-shadow: var(--shadow-md);
+    }
+    
+    .card-header { 
+      display: flex; align-items: center; gap: var(--space-md); 
+      margin-bottom: var(--space-lg); 
+    }
+    
+    .card-icon { font-size: 24px; }
+    .card-header h3 { font-size: 18px; font-weight: 700; }
+    
+    .form-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: var(--space-lg);
+      margin-bottom: var(--space-lg);
+    }
+    
+    .form-group { margin-bottom: var(--space-lg); }
+    
+    .form-group label { 
+      display: block; font-weight: 600; margin-bottom: var(--space-sm); 
+      color: var(--text-primary); 
+    }
+    
+    .form-control {
+      width: 100%; padding: var(--space-md);
+      background: var(--surface-elevated); border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md); color: var(--text-primary);
+      font-size: 15px; transition: all var(--transition-fast);
+    }
+    
+    .form-control:focus {
+      outline: none; border-color: var(--accent-primary);
+      box-shadow: 0 0 0 3px rgba(79, 172, 254, 0.15);
+      background: var(--surface-interactive);
+    }
+    
+    .control-panel { 
+      text-align: center; margin-top: var(--space-xl);
+    }
+    
+    .start-button {
+      display: inline-flex; align-items: center; gap: var(--space-md);
+      padding: var(--space-lg) var(--space-xl); background: var(--accent-gradient);
+      color: white; border: none; border-radius: var(--radius-full);
+      font-size: 18px; font-weight: 700; cursor: pointer;
+      transition: all var(--transition-normal); box-shadow: var(--shadow-md);
+      min-width: 200px;
+    }
+    
+    .start-button:hover { 
+      transform: translateY(-2px); 
+      box-shadow: 0 16px 48px rgba(0, 0, 0, 0.35); 
+    }
+    
+    .start-button.danger { 
+      background: linear-gradient(135deg, var(--error) 0%, #dc2626 100%); 
+    }
+    
+    .progress-container { margin-top: var(--space-lg); max-width: 400px; margin-left: auto; margin-right: auto; }
+    
+    .progress-bar {
+      width: 100%; height: 12px; background: var(--surface-elevated);
+      border: 1px solid var(--border-subtle); border-radius: var(--radius-full);
+      overflow: hidden; margin-bottom: var(--space-sm);
+    }
+    
+    .progress-fill {
+      height: 100%; width: 0%;
+      background: var(--accent-gradient);
+      transition: width var(--transition-normal);
+    }
+    
+    .progress-text { 
+      font-family: monospace; font-size: 14px; color: var(--text-muted); 
+    }
+    
+    .toast-container {
+      position: fixed; top: var(--space-lg); right: var(--space-lg);
+      z-index: 1000; display: flex; flex-direction: column; gap: var(--space-sm);
+    }
+    
+    .toast {
+      background: var(--surface-glass); border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg); padding: var(--space-lg); 
+      backdrop-filter: blur(16px); box-shadow: var(--shadow-md);
+      transform: translateX(100%); animation: slideIn var(--transition-normal) forwards;
+    }
+    
+    .toast.success { border-left: 4px solid var(--success); }
+    .toast.error { border-left: 4px solid var(--error); }
+    .toast.warning { border-left: 4px solid var(--warning); }
+    
+    @keyframes slideIn { to { transform: translateX(0); } }
+    
+    select, select:focus {
+      background-color: var(--surface-elevated) !important;
+      color: var(--text-primary) !important;
+    }
+    
+    select option { 
+      background-color: var(--bg-secondary) !important; 
+      color: var(--text-primary) !important; 
+    }
+    
+    @media (max-width: 768px) {
+      body { padding: var(--space-md); }
+      .header { flex-direction: column; text-align: center; }
+      .form-row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="brand">
+      <div class="logo">🦪</div>
+      <div class="brand-text">
+        <h1>Oyster Detection</h1>
+        <p class="subtitle">YOLO Detection System</p>
+      </div>
+    </div>
+    <div class="status-panel">
+      <div id="status" class="status">
+        <span class="status-text">Ready</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="config-card">
+      <div class="card-header">
+        <div class="card-icon">⚙️</div>
+        <h3>Detection Configuration</h3>
+      </div>
+      
+      <div class="form-row">
+        <div class="form-group">
+          <label for="mode">Mode</label>
+          <select id="mode" class="form-control">
+            <option value="stereo">Stereo</option>
+            <option value="mono">Mono</option>
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label for="model">Model</label>
+          <select id="model" class="form-control"></select>
+        </div>
+      </div>
+      
+      <div class="form-row">
+        <div class="form-group">
+          <label for="left">Left Source</label>
+          <select id="left" class="form-control"></select>
+        </div>
+        
+        <div class="form-group" id="rightCol">
+          <label for="right">Right Source</label>
+          <select id="right" class="form-control"></select>
+        </div>
+      </div>
+      
+      <div class="form-row">
+        <div class="form-group">
+          <label for="conf">Confidence</label>
+          <input id="conf" class="form-control" type="number" min="0" max="1" step="0.01" value="0.25">
+        </div>
+        
+        <div class="form-group">
+          <label for="iou">IoU</label>
+          <input id="iou" class="form-control" type="number" min="0" max="1" step="0.01" value="0.45">
+        </div>
+        
+        <div class="form-group">
+          <label for="output">Output Directory</label>
+          <input id="output" class="form-control" value="outputs/">
+        </div>
+      </div>
+
+      <div class="control-panel">
+
+        <div class="progress-container">
+          <div class="progress-bar">
+            <div id="bar" class="progress-fill"></div>
+          </div>
+          <div id="progText" class="progress-text">0/0 — 0.0 fps</div>
+        </div>
+
+        <div style="margin-top:16px; text-align:center">
+          <img id="preview" alt="Live preview" style="max-width:100%; border:1px solid var(--border-subtle); border-radius:12px" />
+        </div>
+
+        <button id="startBtn" class="start-button" onclick="toggleRun()">
+          <span>🚀</span>
+          <span class="btn-text">Start Detection</span>
+        </button>
+
+      </div>
+    </section>
+  </main>
+
+  <div id="toastContainer" class="toast-container"></div>
+
+  <script>
+    const qs = id => document.getElementById(id);
+    let polling = null, running = false, previewTimer = null; // preview solo durante detection
+
+    function toast(msg, type='success', ms=2200) {
+      const container = qs('toastContainer');
+      const toast = document.createElement('div');
+      toast.className = 'toast ' + type;
+      toast.textContent = msg;
+      container.appendChild(toast);
+      setTimeout(() => toast.remove(), ms);
+    }
+
+    async function loadFiles() {
+      const response = await fetch('/api/files');
+      return response.json();
+    }
+
+    function setOptions(select, options) {
+      select.innerHTML = '<option value="">-- Select --</option>';
+      (options || []).forEach(option => {
+        const opt = document.createElement('option');
+        opt.value = option;
+        opt.textContent = option.includes('/') ? option.split('/').pop() : option;
+        select.appendChild(opt);
+      });
+    }
+
+    function updateModeUI() {
+      const isStereo = qs('mode').value === 'stereo';
+      qs('rightCol').style.display = isStereo ? '' : 'none';
+    }
+
+    async function toggleRun() {
+      const btn = qs('startBtn');
+      
+      if (!running) {
+        const config = {
+          mode: qs('mode').value,
+          model: qs('model').value,
+          left: qs('left').value,
+          right: qs('right').value,
+          conf: parseFloat(qs('conf').value),
+          iou: parseFloat(qs('iou').value),
+          output: qs('output').value
+        };
+        
+        if (!config.model || !config.left || (config.mode === 'stereo' && !config.right)) {
+          toast('Please fill in all required fields', 'warning');
+          return;
+        }
+
+        // >>> AGGIUNTA: pulizia jpg prima di avviare una nuova detection <<<
+        await fetch('/api/clear_frames', { method: 'POST' });
+        // <<< FINE AGGIUNTA >>>
+        
+        const response = await fetch('/api/start', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(config)
+        });
+        
+        const result = await response.json();
+        if (!result.ok) {
+          toast('Error: ' + result.error, 'error');
+          return;
+        }
+        
+        running = true;
+        btn.classList.add('danger');
+        btn.querySelector('.btn-text').textContent = 'Stop';
+        startPolling();
+        toast('Detection started');
+        
+      } else {
+        // >>> AGGIUNTA: conferma stop con cancellazione dei jpg <<<
+        const sure = confirm('Sei sicuro? Fermando ora perderai il progresso e verranno eliminati i frame .jpg salvati finora.');
+        if (!sure) return;
+        // <<< FINE AGGIUNTA >>>
+
+        await fetch('/api/stop', { method: 'POST' });
+
+        // >>> AGGIUNTA: elimina i jpg generati finora <<<
+        await fetch('/api/clear_frames', { method: 'POST' });
+        // <<< FINE AGGIUNTA >>>
+
+        running = false;
+        btn.classList.remove('danger');
+        btn.querySelector('.btn-text').textContent = 'Start Detection';
+        stopPolling();
+        toast('Detection stopped', 'warning');
+      }
+    }
+
+    function startPolling() {
+      if (polling) return;
+
+      // Avvia il refresh della preview SOLO durante la detection
+      if (!previewTimer) {
+        previewTimer = setInterval(() => {
+          const img = qs('preview');
+          if (img) {
+            img.src = '/api/last_frame?ts=' + Date.now(); // anti-cache
+          }
+        }, 500);
+      }
+
+      polling = setInterval(async () => {
+        try {
+          const response = await fetch('/api/status');
+          const status = await response.json();
+          
+          running = status.running;
+          
+          qs('bar').style.width = status.total_frames > 0 ? 
+            Math.min(100, (status.frames / status.total_frames) * 100) + '%' : '0%';
+          
+          qs('progText').textContent = 
+            `${status.frames}/${status.total_frames || '?'} — ${status.fps} fps`;
+          
+          if (!running) {
+            const btn = qs('startBtn');
+            btn.classList.remove('danger');
+            btn.querySelector('.btn-text').textContent = 'Start Detection';
+            stopPolling();
+          }
+          
+        } catch (e) {
+          console.error('Status polling error:', e);
+        }
+      }, 500);
+    }
+
+    function stopPolling() {
+      if (polling) { clearInterval(polling); polling = null; }
+      if (previewTimer) { clearInterval(previewTimer); previewTimer = null; }
+    }
+
+    // Initialize (non avvia alcuna preview)
+    (async () => {
+      try {
+        qs('status').querySelector('.status-text').textContent = 'Loading...';
+        const data = await loadFiles();
+        
+        setOptions(qs('model'), data.models);
+        setOptions(qs('left'), data.videos);
+        setOptions(qs('right'), data.videos);
+        
+        if (data.defaults) {
+          qs('conf').value = data.defaults.conf;
+          qs('iou').value = data.defaults.iou;
+          qs('output').value = data.defaults.output;
+        }
+        
+        updateModeUI();
+        qs('status').querySelector('.status-text').textContent = 'Ready';
+        
+      } catch (e) {
+        console.error('Initialization error:', e);
+        qs('status').querySelector('.status-text').textContent = 'Error loading files';
+      }
+    })();
+
+    qs('mode').addEventListener('change', updateModeUI);
+  </script>
+</body>
+</html>
