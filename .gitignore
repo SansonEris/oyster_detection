@@ -1,4 +1,4 @@
-# Bytecode Python
+# Python bytecode
 __pycache__/
 *.py[cod]
 *.pyo
@@ -11,23 +11,25 @@ venv/
 ENV/
 env/
 
-# IDE/editor
+# IDE/Editor
 .vscode/
 .idea/
 *.swp
 *.swo
 
-# Sistemi OS
+# OS
 .DS_Store
 Thumbs.db
 
-# Output generati dal sistema
+# NON versionare output generati
 outputs/*
 !outputs/.gitkeep
 
-# Modelli (YOLO, pesi addestrati)
+# NON versionare modelli e video
 models/*
 !models/.gitkeep
+videos/*
+!videos/.gitkeep
 
-# Log temporanei
+# Log
 *.log
