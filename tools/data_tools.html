@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <title>Oyster Data Tools</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <!-- usa lo stesso path della detection -->
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+
+<body>
+<header class="header">
+  <div class="header-content">
+    <div class="brand">
+      <div class="logo">🧰</div>
+      <div class="brand-text">
+        <h1>Oyster Data Tools</h1>
+        <p class="subtitle">Frames → GPS → Merge</p>
+      </div>
+    </div>
+    <div class="rightbar">
+      <nav class="nav">
+        <a href="/" class="btn-tab">Detection</a>
+        <a href="/tools" class="btn-tab active">Tools</a>
+      </nav>
+      <div class="status"><span class="status-text">Ready</span></div>
+    </div>
+  </div>
+</header>
+
+<main class="main-content">
+  <!-- 1) GPS LOGGER -->
+  <section class="card">
+    <div class="card-header"><h3>GPS Logger (mavlink2rest → gps.csv)</h3></div>
+    <div class="card-content">
+      <div class="form-row">
+        <div class="form-group">
+          <label for="gpsBase">Mavlink Base URL</label>
+          <input id="gpsBase" class="form-control" placeholder="http://192.168.2.2:6040">
+          <span class="small">Es: http://192.168.2.2:6040</span>
+        </div>
+        <div class="form-group">
+          <label for="gpsHz">Frequency (Hz)</label>
+          <input id="gpsHz" class="form-control" type="number" min="1" max="20" step="1" value="5">
+        </div>
+        <div class="form-group">
+          <label for="gpsOut">Output CSV</label>
+          <input id="gpsOut" class="form-control" value="gps.csv">
+        </div>
+      </div>
+      <div class="form-row">
+        <button class="btn btn-success" onclick="startGPS()">Start GPS Logger</button>
+        <button class="btn btn-danger" onclick="stopGPS()">Stop GPS Logger</button>
+      </div>
+      <div style="margin-top:12px">
+        <pre id="gpsLog" class="log"></pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2) FRAMES → CSV -->
+  <section class="card">
+    <div class="card-header"><h3>Frames CSV (nomi immagine → timestamp)</h3></div>
+    <div class="card-content">
+      <div class="form-row">
+        <div class="form-group">
+          <label for="imagesDir">Images Directory</label>
+          <input id="imagesDir" class="form-control" placeholder="/path/alle/immagini">
+          <span class="small">La cartella deve contenere file tipo SSSSSSSSS.NNNNNNNNN.png</span>
+        </div>
+        <div class="form-group">
+          <label for="framesOut">Output CSV</label>
+          <input id="framesOut" class="form-control" value="frames.csv">
+        </div>
+      </div>
+      <div class="form-row">
+        <button class="btn btn-primary" onclick="genFrames()">Generate frames.csv</button>
+      </div>
+      <div style="margin-top:12px">
+        <pre id="framesLog" class="log"></pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3) ALIGN & FUSE -->
+  <section class="card">
+    <div class="card-header"><h3>Align & Fuse (frames + gps [+ detections])</h3></div>
+    <div class="card-content">
+      <div class="form-row">
+        <div class="form-group">
+          <label for="framesCsv">Frames CSV</label>
+          <input id="framesCsv" class="form-control" value="frames.csv">
+        </div>
+        <div class="form-group">
+          <label for="gpsCsv">GPS CSV</label>
+          <input id="gpsCsv" class="form-control" value="gps.csv">
+        </div>
+        <div class="form-group">
+          <label for="detectionsCsv">Detections CSV (optional)</label>
+          <input id="detectionsCsv" class="form-control" placeholder="detections.csv">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="method">Method</label>
+          <select id="method" class="form-control">
+            <option value="nearest">Nearest</option>
+            <option value="interp" selected>Interp</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="tolMs">Tolerance (ms)</label>
+          <input id="tolMs" class="form-control" type="number" value="500">
+        </div>
+        <div class="form-group">
+          <label for="offsetMs">Offset Frames→GPS (ms)</label>
+          <input id="offsetMs" class="form-control" type="number" value="0">
+          <span class="small">Usa offset se gli orologi non coincidono</span>
+        </div>
+        <div class="form-group">
+          <label for="finalOut">Output CSV</label>
+          <input id="finalOut" class="form-control" value="final.csv">
+        </div>
+      </div>
+      <div class="form-row">
+        <button class="btn btn-primary" onclick="runAlign()">Run Align & Fuse</button>
+      </div>
+      <div style="margin-top:12px">
+        <pre id="alignLog" class="log"></pre>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<div id="toastContainer" class="toast-container"></div>
+
+<script>
+  const qs = id => document.getElementById(id);
+
+  function toast(msg, type='success', ms=3000) {
+    const container = document.getElementById('toastContainer');
+    const el = document.createElement('div');
+    el.className = 'toast ' + type;
+    el.textContent = msg;
+    container.appendChild(el);
+    setTimeout(() => el.remove(), ms);
+  }
+
+  async function init() {
+    try {
+      const r = await fetch('/api/tools/files');
+      const data = await r.json();
+      if (data.defaults) {
+        qs('gpsBase').value = data.defaults.mavlink_base;
+        qs('gpsHz').value = data.defaults.gps_hz;
+        qs('tolMs').value = data.defaults.tolerance_ms;
+        qs('offsetMs').value = data.defaults.offset_ms;
+        qs('method').value = data.defaults.method;
+      }
+      // Se vuoi, potresti popolari suggerimenti (datalist) per images/csv ecc.
+    } catch (e) {
+      console.error(e);
+      toast('Errore inizializzazione', 'error');
+    }
+  }
+
+  async function startGPS() {
+    const payload = {
+      base: qs('gpsBase').value,
+      hz: parseInt(qs('gpsHz').value || '5', 10),
+      out: qs('gpsOut').value || 'gps.csv'
+    };
+    const r = await fetch('/api/tools/gps/start', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    });
+    const res = await r.json();
+    if (res.ok) {
+      toast('GPS Logger avviato', 'success');
+      qs('gpsLog').textContent = `PID ${res.pid}\nCMD: ${res.cmd}`;
+    } else {
+      toast('Errore: ' + (res.error||'unknown'), 'error');
+      qs('gpsLog').textContent = (res.stderr||res.error||'');
+    }
+  }
+
+  async function stopGPS() {
+    const r = await fetch('/api/tools/gps/stop', {method:'POST'});
+    const res = await r.json();
+    if (res.ok) {
+      toast('GPS Logger fermato', 'warning');
+    } else {
+      toast('Logger non attivo', 'warning');
+    }
+  }
+
+  async function genFrames() {
+    const payload = {
+      images_dir: qs('imagesDir').value,
+      out: qs('framesOut').value || 'frames.csv'
+    };
+    if (!payload.images_dir) {
+      toast('Seleziona la cartella immagini', 'warning');
+      return;
+    }
+    const r = await fetch('/api/tools/frames/generate', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    });
+    const res = await r.json();
+    if (res.ok) {
+      toast('frames.csv generato', 'success');
+    } else {
+      toast('Errore generazione', 'error');
+    }
+    qs('framesLog').textContent = (res.stdout||'') + '\n' + (res.stderr||'');
+  }
+
+  async function runAlign() {
+    const payload = {
+      frames: qs('framesCsv').value,
+      gps: qs('gpsCsv').value,
+      detections: qs('detectionsCsv').value || null,
+      out: qs('finalOut').value || 'final.csv',
+      method: qs('method').value,
+      tolerance_ms: parseInt(qs('tolMs').value || '500', 10),
+      offset_ms: parseInt(qs('offsetMs').value || '0', 10)
+    };
+    if (!payload.frames || !payload.gps) {
+      toast('frames.csv e gps.csv sono obbligatori', 'warning');
+      return;
+    }
+    const r = await fetch('/api/tools/align/run', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    });
+    const res = await r.json();
+    if (res.ok) {
+      toast('Merge completato', 'success');
+    } else {
+      toast('Errore merge', 'error');
+    }
+    qs('alignLog').textContent = `CMD: ${res.cmd||''}\nOUT: ${res.stdout||''}\nERR: ${res.stderr||''}`;
+  }
+
+  init();
+</script>
+</body>
+</html>
