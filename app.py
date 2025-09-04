@@ -115,6 +115,10 @@ def serve_outputs(filename):
 def tools_page():
     return send_from_directory('.', 'data_tools.html')
 
+@app.route('/api/tools/align/run', methods=['POST'])
+def align_run_alias():
+    return combine_run()  
+
 @app.route('/api/last_frame')
 def last_frame():
     base = 'outputs'
@@ -153,7 +157,7 @@ def tools_files():
     """Elenco utile per la UI: cartelle immagini e CSV disponibili."""
     try:
         images_dirs = [d for d in glob.glob('outputs/*') if os.path.isdir(d)]
-        csvs = glob.glob('*.csv') + glob.glob('outputs/**/*.csv', recursive=True) + glob.glob('maps/*.csv')
+        csvs = glob.glob('*.csv') + glob.glob('outputs/**/*.csv', recursive=True) + glob.glob('tools/*.csv')
         return jsonify({
             'images_dirs': images_dirs,
             'csvs': csvs,
@@ -172,7 +176,7 @@ def tools_files():
 @app.route('/api/tools/gps/start', methods=['POST'])
 def gps_start():
     """
-    Avvia il logger GPS (maps/get_gps.py) come sottoprocesso.
+    Avvia il logger GPS (tools/get_gps.py) come sottoprocesso.
     Body JSON (opzionali): { "base": "...", "out": "gps.csv", "hz": 5 }
     """
     global gps_proc
@@ -184,8 +188,8 @@ def gps_start():
     out  = data.get('out',  'gps.csv')
     hz   = str(data.get('hz', 5))
 
-    # Adegua gli argomenti a quelli previsti da maps/get_gps.py (se diversi, cambiali qui)
-    cmd = ['python', 'maps/get_gps.py', '--base', base, '--out', out, '--hz', hz]
+    # Adegua gli argomenti a quelli previsti da tools/get_gps.py (se diversi, cambiali qui)
+    cmd = ['python', 'tools/get_gps.py', '--base', base, '--out', out, '--hz', hz]
 
     try:
         gps_proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
@@ -214,7 +218,7 @@ def gps_stop():
 @app.route('/api/tools/frames/generate', methods=['POST'])
 def frames_generate():
     """
-    Genera frames.csv dalla cartella immagini con maps/frames_from_images.py
+    Genera frames.csv dalla cartella immagini con tools/frames_from_images.py
     Body JSON: { "images_dir": "...", "out": "frames.csv" }
     """
     data = request.json or {}
@@ -224,7 +228,7 @@ def frames_generate():
     if not images_dir:
         return jsonify({'ok': False, 'error': 'images_dir required'}), 400
 
-    cmd = ['python', 'maps/frames_from_images.py', '--images-dir', images_dir, '--out', out]
+    cmd = ['python', 'tools/frames_from_images.py', '--images-dir', images_dir, '--out', out]
     try:
         res = subprocess.run(cmd, capture_output=True, text=True)
         return jsonify({
@@ -241,7 +245,7 @@ def frames_generate():
 @app.route('/api/tools/combine/run', methods=['POST'])
 def combine_run():
     """
-    Esegue il merge/allineamento con maps/combine_csv.py
+    Esegue il merge/allineamento con tools/combine_csv.py
     Body JSON: {
       "frames": "frames.csv",
       "gps": "gps.csv",
@@ -264,8 +268,8 @@ def combine_run():
     if not frames or not gps:
         return jsonify({'ok': False, 'error': 'frames and gps are required'}), 400
 
-    # Adegua gli argomenti a come è implementato maps/combine_csv.py
-    cmd = ['python', 'maps/combine_csv.py',
+    # Adegua gli argomenti a come è implementato tools/combine_csv.py
+    cmd = ['python', 'tools/combine_csv.py',
            '--frames', frames,
            '--gps', gps,
            '--out', out,

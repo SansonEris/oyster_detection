@@ -68,8 +68,11 @@ def main():
     gpsi = gpsi.sort_values("ts_ms")
 
     merged = pd.merge_asof(
-        frames, gpsi,
-        on="ts_ms", direction="nearest", tolerance=pd.Timedelta(milliseconds=args.tolerance_ms)
+        frames.sort_values("ts_ms"),
+        gpsi.sort_values("ts_ms"),
+        on="ts_ms",
+        direction="nearest",
+        tolerance=args.tolerance_ms  # <-- numero, NON Timedelta
     )
 
     # Se alcuni frame rimangono senza gps (NaN) e stai usando interp, ripeti senza tolleranza per spalmare la stima
