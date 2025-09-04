@@ -291,6 +291,37 @@ def combine_run():
     except Exception as e:
         return jsonify({'ok': False, 'error': str(e)}), 500
 
+@app.route('/api/tools/heatmap/generate', methods=['POST'])
+def heatmap_generate():
+    """
+    Body JSON: { "csv": "outputs/.../final.csv", "out": "outputs/heatmap.html" (opz), "radius":20, "blur":15 }
+    """
+    data = request.json or {}
+    csv_path = data.get('csv')
+    out_path = data.get('out')
+    radius = str(data.get('radius', 20))
+    blur = str(data.get('blur', 15))
+
+    if not csv_path:
+        return jsonify({'ok': False, 'error': 'csv is required'}), 400
+
+    # Assicurati che il CSV sia accessibile via HTTP
+    # Se il CSV è nella root, spostalo in outputs per essere servibile
+    if csv_path and not csv_path.startswith('outputs/'):
+        import shutil
+        if os.path.exists(csv_path):
+            dest = os.path.join('outputs', os.path.basename(csv_path))
+            shutil.copy2(csv_path, dest)
+            csv_path = dest
+
+    cmd = ['python', 'tools/make_heatmap.py', '--csv', csv_path, '--radius', radius, '--blur', blur]
+    if out_path:
+        cmd += ['--out', out_path]
+
+    res = subprocess.run(cmd, capture_output=True, text=True)
+    ok = (res.returncode == 0)
+    generated = res.stdout.strip() if ok else None
+    return jsonify({'ok': ok, 'stdout': res.stdout, 'stderr': res.stderr, 'html': generated})
 if __name__ == '__main__':
     # Ensure directories exist
     os.makedirs('models', exist_ok=True)

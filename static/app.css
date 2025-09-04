@@ -119,3 +119,9 @@ pre.log{
 }
 
 .card, .card-content { min-width: 0; }
+
+.legend { color: var(--text-secondary); font-size: 12px; }
+.legend-row { display: flex; align-items: center; gap: 8px; }
+.legend-label { width: 40px; text-align: center; color: var(--text-primary); }
+#legendCanvas { border: 1px solid var(--border-secondary); border-radius: 4px; display: block; }
+.legend-hint { margin-top: 4px; opacity: .75; }

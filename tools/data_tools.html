@@ -45,7 +45,7 @@
         </div>
         <div class="form-group">
           <label for="gpsOut">Output CSV</label>
-          <input id="gpsOut" class="form-control" value="gps.csv">
+          <input id="gpsOut" class="form-control" value="gps.csv" placeholder="gps.csv">
         </div>
       </div>
       <div class="form-row">
@@ -97,7 +97,7 @@
         </div>
         <div class="form-group">
           <label for="detectionsCsv">Detections CSV (optional)</label>
-          <input id="detectionsCsv" class="form-control" placeholder="detections.csv">
+          <input id="detectionsCsv" class="form-control" value="detections.csv" placeholder="detections.csv">
         </div>
       </div>
       <div class="form-row">
@@ -119,7 +119,7 @@
         </div>
         <div class="form-group">
           <label for="finalOut">Output CSV</label>
-          <input id="finalOut" class="form-control" value="final.csv">
+          <input id="finalOut" class="form-control" value="final.csv" placeholder="final.csv">
         </div>
       </div>
       <div class="form-row">
@@ -131,6 +131,42 @@
     </div>
   </section>
 
+  <section class="card" id="heatCard" style="display:none">
+    <div class="card-header"><h3>Heatmap</h3></div>
+    <div class="card-content">
+      <div class="form-row">
+        <div class="form-group">
+          <label for="heatCsv">CSV per Heatmap</label>
+          <input id="heatCsv" class="form-control" placeholder="final.csv">
+          <span class="small">Usa il final.csv generato dal merge</span>
+        </div>
+        <div class="form-group">
+          <label for="heatOut">HTML di output</label>
+          <input id="heatOut" class="form-control" value="outputs/heatmap.html">
+        </div>
+        <div class="form-group">
+          <label for="heatRadius">Raggio</label>
+          <input id="heatRadius" type="number" class="form-control" value="20">
+        </div>
+        <div class="form-group">
+          <label for="heatBlur">Blur</label>
+          <input id="heatBlur" type="number" class="form-control" value="15">
+        </div>
+      </div>
+      <div class="form-row">
+        <button class="btn btn-primary" onclick="generateHeat()">Genera Heatmap</button>
+      </div>
+
+      <div style="margin-top:12px">
+        <pre id="heatLog" class="log"></pre>
+      </div>
+
+      <div id="heatPreviewWrapper" style="margin-top:16px; display:none;">
+        <iframe id="heatPreview" style="width:100%; height:520px; border:1px solid var(--border-secondary); border-radius:6px;"></iframe>
+      </div>
+    </div>
+	
+  </section>
 </main>
 
 <div id="toastContainer" class="toast-container"></div>
@@ -158,7 +194,7 @@
         qs('offsetMs').value = data.defaults.offset_ms;
         qs('method').value = data.defaults.method;
       }
-      // Se vuoi, potresti popolari suggerimenti (datalist) per images/csv ecc.
+      // Se vuoi, potresti popolare suggerimenti (datalist) per images/csv ecc.
     } catch (e) {
       console.error(e);
       toast('Errore inizializzazione', 'error');
@@ -171,27 +207,38 @@
       hz: parseInt(qs('gpsHz').value || '5', 10),
       out: qs('gpsOut').value || 'gps.csv'
     };
-    const r = await fetch('/api/tools/gps/start', {
-      method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify(payload)
-    });
-    const res = await r.json();
-    if (res.ok) {
-      toast('GPS Logger avviato', 'success');
-      qs('gpsLog').textContent = `PID ${res.pid}\nCMD: ${res.cmd}`;
-    } else {
-      toast('Errore: ' + (res.error||'unknown'), 'error');
-      qs('gpsLog').textContent = (res.stderr||res.error||'');
+    try {
+      const r = await fetch('/api/tools/gps/start', {
+        method: 'POST', 
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify(payload)
+      });
+      const res = await r.json();
+      if (res.ok) {
+        toast('GPS Logger avviato', 'success');
+        qs('gpsLog').textContent = `PID ${res.pid}\nCMD: ${res.cmd}`;
+      } else {
+        toast('Errore: ' + (res.error||'unknown'), 'error');
+        qs('gpsLog').textContent = (res.stderr||res.error||'');
+      }
+    } catch (e) {
+      toast('Errore di connessione', 'error');
+      console.error(e);
     }
   }
 
   async function stopGPS() {
-    const r = await fetch('/api/tools/gps/stop', {method:'POST'});
-    const res = await r.json();
-    if (res.ok) {
-      toast('GPS Logger fermato', 'warning');
-    } else {
-      toast('Logger non attivo', 'warning');
+    try {
+      const r = await fetch('/api/tools/gps/stop', {method:'POST'});
+      const res = await r.json();
+      if (res.ok) {
+        toast('GPS Logger fermato', 'warning');
+      } else {
+        toast('Logger non attivo', 'warning');
+      }
+    } catch (e) {
+      toast('Errore di connessione', 'error');
+      console.error(e);
     }
   }
 
@@ -204,17 +251,23 @@
       toast('Seleziona la cartella immagini', 'warning');
       return;
     }
-    const r = await fetch('/api/tools/frames/generate', {
-      method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify(payload)
-    });
-    const res = await r.json();
-    if (res.ok) {
-      toast('frames.csv generato', 'success');
-    } else {
-      toast('Errore generazione', 'error');
+    try {
+      const r = await fetch('/api/tools/frames/generate', {
+        method: 'POST', 
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify(payload)
+      });
+      const res = await r.json();
+      if (res.ok) {
+        toast('frames.csv generato', 'success');
+      } else {
+        toast('Errore generazione', 'error');
+      }
+      qs('framesLog').textContent = (res.stdout||'') + '\n' + (res.stderr||'');
+    } catch (e) {
+      toast('Errore di connessione', 'error');
+      console.error(e);
     }
-    qs('framesLog').textContent = (res.stdout||'') + '\n' + (res.stderr||'');
   }
 
   async function runAlign() {
@@ -227,23 +280,92 @@
       tolerance_ms: parseInt(qs('tolMs').value || '500', 10),
       offset_ms: parseInt(qs('offsetMs').value || '0', 10)
     };
+    
     if (!payload.frames || !payload.gps) {
       toast('frames.csv e gps.csv sono obbligatori', 'warning');
       return;
     }
-    const r = await fetch('/api/tools/align/run', {
-      method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify(payload)
-    });
-    const res = await r.json();
-    if (res.ok) {
-      toast('Merge completato', 'success');
-    } else {
-      toast('Errore merge', 'error');
+    
+    try {
+      const r = await fetch('/api/tools/align/run', {
+        method: 'POST', 
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify(payload)
+      });
+      const res = await r.json();
+      
+      if (res.ok) {
+        toast('Merge completato', 'success');
+        autoHeat(res);
+      } else {
+        toast('Errore merge', 'error');
+      }
+      qs('alignLog').textContent = `CMD: ${res.cmd||''}\nOUT: ${res.stdout||''}\nERR: ${res.stderr||''}`;
+    } catch (e) {
+      toast('Errore di connessione', 'error');
+      console.error(e);
     }
-    qs('alignLog').textContent = `CMD: ${res.cmd||''}\nOUT: ${res.stdout||''}\nERR: ${res.stderr||''}`;
   }
 
+  async function generateHeat(csvPath, outPath) {
+    const csvRaw = (csvPath || qs('heatCsv').value || 'final.csv').trim();
+    const outRaw = (outPath || qs('heatOut').value || 'outputs/heatmap.html').trim();
+    
+    // Per il backend (filesystem): rimuovi eventuale "/" iniziale
+    const csvFs = csvRaw.replace(/^\/+/, '');
+    const outFs = outRaw.replace(/^\/+/, '');
+
+    const radius = parseInt(qs('heatRadius').value || '20', 10);
+    const blur = parseInt(qs('heatBlur').value || '15', 10);
+
+    try {
+      // Chiama l'endpoint Python
+      const r = await fetch('/api/tools/heatmap/generate', {
+        method: 'POST', 
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ csv: csvFs, out: outFs, radius, blur })
+      });
+      const res = await r.json();
+
+      const log = qs('heatLog');
+      const card = qs('heatCard');
+      const wrap = qs('heatPreviewWrapper');
+      const iframe = qs('heatPreview');
+
+      card.style.display = 'block';
+
+      if (res.ok && res.html) {
+        toast('Heatmap generata', 'success');
+        log.textContent = `OK → ${res.html}`;
+        wrap.style.display = 'block';
+        // Assicurati che il path sia corretto per l'iframe
+        const htmlPath = res.html.startsWith('/') ? res.html : '/' + res.html;
+        iframe.src = htmlPath + `?t=${Date.now()}`;
+      } else {
+        toast('Errore generazione heatmap', 'error');
+        log.textContent = `ERR\n${res.stderr || res.error || ''}`;
+      }
+    } catch (e) {
+      toast('Errore di connessione', 'error');
+      console.error(e);
+    }
+  }
+
+  function autoHeat(alignResponse) {
+    const outCsvRaw = (alignResponse && alignResponse.out)
+      ? alignResponse.out
+      : (qs('finalOut') ? qs('finalOut').value : 'final.csv');
+
+    // Aggiorna l'input con il CSV generato
+    if (qs('heatCsv')) {
+      qs('heatCsv').value = outCsvRaw;
+    }
+
+    // Genera heatmap automaticamente
+    generateHeat(outCsvRaw, 'outputs/heatmap.html');
+  }
+
+  // Initialize
   init();
 </script>
 </body>
