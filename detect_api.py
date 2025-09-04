@@ -1,6 +1,5 @@
 from ultralytics import YOLO
 import cv2
-import cvzone
 import math
 import time
 import os
@@ -33,6 +32,11 @@ class OysterDetector:
         
         # Initialize video capture
         self._init_video_captures()
+        
+        # Create log file
+        self.log_file = os.path.join(self.output_dir, "detection_log.txt")
+        with open(self.log_file, 'w') as f:
+            f.write("Frame,Oysters_Total,Oysters_Left,Oysters_Right,FPS,Timestamp\n")
     
     def _init_video_captures(self):
         """Initialize video captures"""
@@ -49,6 +53,51 @@ class OysterDetector:
         if not self.cap_left.isOpened():
             raise ValueError("Cannot open left video file")
     
+    def draw_red_rectangle(self, img, x1, y1, x2, y2, thickness=2):
+        """Draw red rectangle with rounded corners effect"""
+        # Main rectangle
+        cv2.rectangle(img, (x1, y1), (x2, y2), (0, 0, 255), thickness)
+        
+        # Corner decorations for better visibility
+        corner_size = 10
+        # Top-left corner
+        cv2.line(img, (x1, y1), (x1 + corner_size, y1), (0, 0, 255), thickness + 1)
+        cv2.line(img, (x1, y1), (x1, y1 + corner_size), (0, 0, 255), thickness + 1)
+        
+        # Top-right corner
+        cv2.line(img, (x2, y1), (x2 - corner_size, y1), (0, 0, 255), thickness + 1)
+        cv2.line(img, (x2, y1), (x2, y1 + corner_size), (0, 0, 255), thickness + 1)
+        
+        # Bottom-left corner
+        cv2.line(img, (x1, y2), (x1 + corner_size, y2), (0, 0, 255), thickness + 1)
+        cv2.line(img, (x1, y2), (x1, y2 - corner_size), (0, 0, 255), thickness + 1)
+        
+        # Bottom-right corner
+        cv2.line(img, (x2, y2), (x2 - corner_size, y2), (0, 0, 255), thickness + 1)
+        cv2.line(img, (x2, y2), (x2, y2 - corner_size), (0, 0, 255), thickness + 1)
+    
+    def put_text_with_background(self, img, text, pos, font_scale=0.6, thickness=2):
+        """Put white text with red background"""
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        
+        # Get text size
+        (text_width, text_height), baseline = cv2.getTextSize(text, font, font_scale, thickness)
+        
+        x, y = pos
+        
+        # Ensure text doesn't go out of bounds
+        x = max(0, min(x, img.shape[1] - text_width - 10))
+        y = max(text_height + 5, min(y, img.shape[0] - 5))
+        
+        # Draw red background rectangle
+        cv2.rectangle(img, 
+                     (x - 5, y - text_height - 5), 
+                     (x + text_width + 5, y + baseline + 5), 
+                     (0, 0, 255), -1)
+        
+        # Draw white text
+        cv2.putText(img, text, (x, y), font, font_scale, (255, 255, 255), thickness, cv2.LINE_AA)
+    
     def process_frame(self, img, prefix=""):
         """Process a single frame and return annotated image with oyster count"""
         # Configure YOLO parameters
@@ -63,10 +112,9 @@ class OysterDetector:
                     # Bounding Box
                     x1, y1, x2, y2 = box.xyxy[0]
                     x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
-                    w, h = x2 - x1, y2 - y1
                     
-                    # Draw bounding box
-                    cvzone.cornerRect(img, (x1, y1, w, h))
+                    # Draw red bounding box
+                    self.draw_red_rectangle(img, x1, y1, x2, y2)
                     
                     # Confidence
                     conf = float(box.conf[0])
@@ -79,17 +127,18 @@ class OysterDetector:
                     else:
                         label = f'class_{cls} {conf_txt}'
                     
-                    # Draw label
-                    cvzone.putTextRect(img, label, (max(0, x1), max(35, y1)), 
-                                     scale=1, thickness=1)
+                    # Draw white text with red background
+                    self.put_text_with_background(img, label, (x1, y1 - 10))
                     
                     oyster_count += 1
         
-        # Add frame counter and oyster count to image
-        info_text = f"{prefix}Frame: {self.frames_processed} | Oysters: {oyster_count}"
-        cvzone.putTextRect(img, info_text, (10, 30), scale=1.5, thickness=2)
-        
         return img, oyster_count
+    
+    def log_detection_data(self, frame_num, total_oysters, left_oysters=0, right_oysters=0, fps=0.0):
+        """Log detection data to file"""
+        timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+        with open(self.log_file, 'a') as f:
+            f.write(f"{frame_num},{total_oysters},{left_oysters},{right_oysters},{fps},{timestamp}\n")
     
     def run(self):
         """Main detection loop"""
@@ -119,11 +168,17 @@ class OysterDetector:
                     
                     with self.lock:
                         self.current_oyster_count = oyster_count
+                        self.frames_processed += 1
+                        elapsed = time.time() - start_time
+                        self.fps = round(self.frames_processed / elapsed, 1) if elapsed > 0 else 0.0
+                    
+                    # Log data
+                    self.log_detection_data(self.frames_processed, oyster_count, oyster_count, 0, self.fps)
                 
                 elif self.mode == "stereo":
                     # Process both frames
-                    processed_left, oyster_count_left = self.process_frame(frame_left, "L-")
-                    processed_right, oyster_count_right = self.process_frame(frame_right, "R-")
+                    processed_left, oyster_count_left = self.process_frame(frame_left)
+                    processed_right, oyster_count_right = self.process_frame(frame_right)
                     
                     # Combine frames side by side
                     # Resize frames to same height if needed
@@ -140,14 +195,17 @@ class OysterDetector:
                     # Save combined frame
                     output_path = os.path.join(self.output_dir, f"frame_{self.frames_processed:06d}.jpg")
                     cv2.imwrite(output_path, combined_frame)
+                    
+                    total_oysters = oyster_count_left + oyster_count_right
+                    
                     with self.lock:
-                        self.current_oyster_count = oyster_count_left + oyster_count_right
-                
-                # Update status
-                with self.lock:
-                    self.frames_processed += 1
-                    elapsed = time.time() - start_time
-                    self.fps = round(self.frames_processed / elapsed, 1) if elapsed > 0 else 0.0
+                        self.current_oyster_count = total_oysters
+                        self.frames_processed += 1
+                        elapsed = time.time() - start_time
+                        self.fps = round(self.frames_processed / elapsed, 1) if elapsed > 0 else 0.0
+                    
+                    # Log data
+                    self.log_detection_data(self.frames_processed, total_oysters, oyster_count_left, oyster_count_right, self.fps)
             
         except Exception as e:
             print(f"Detection error: {e}")
@@ -188,8 +246,48 @@ class OysterDetector:
             out.release()
             print(f"Output video created: {output_video_path}")
             
+            # Create summary log
+            self._create_summary_log()
+            
         except Exception as e:
             print(f"Error creating output video: {e}")
+    
+    def _create_summary_log(self):
+        """Create summary statistics log"""
+        try:
+            summary_path = os.path.join(self.output_dir, "detection_summary.txt")
+            
+            total_oysters = 0
+            total_frames = self.frames_processed
+            avg_oysters_per_frame = 0
+            
+            # Read log file to calculate statistics
+            if os.path.exists(self.log_file):
+                with open(self.log_file, 'r') as f:
+                    lines = f.readlines()[1:]  # Skip header
+                    if lines:
+                        oyster_counts = [int(line.split(',')[1]) for line in lines if line.strip()]
+                        total_oysters = sum(oyster_counts)
+                        avg_oysters_per_frame = total_oysters / len(oyster_counts) if oyster_counts else 0
+                        max_oysters = max(oyster_counts) if oyster_counts else 0
+                        min_oysters = min(oyster_counts) if oyster_counts else 0
+            
+            with open(summary_path, 'w') as f:
+                f.write("=== OYSTER DETECTION SUMMARY ===\n")
+                f.write(f"Mode: {self.mode}\n")
+                f.write(f"Model: {os.path.basename(self.model.ckpt_path) if hasattr(self.model, 'ckpt_path') else 'Unknown'}\n")
+                f.write(f"Total Frames Processed: {total_frames}\n")
+                f.write(f"Total Oysters Detected: {total_oysters}\n")
+                f.write(f"Average Oysters per Frame: {avg_oysters_per_frame:.2f}\n")
+                f.write(f"Max Oysters in Single Frame: {max_oysters}\n")
+                f.write(f"Min Oysters in Single Frame: {min_oysters}\n")
+                f.write(f"Average FPS: {self.fps}\n")
+                f.write(f"Confidence Threshold: {self.confidence}\n")
+                f.write(f"IoU Threshold: {self.iou}\n")
+                f.write(f"Processing Time: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
+                
+        except Exception as e:
+            print(f"Error creating summary log: {e}")
     
     def _cleanup(self):
         """Release video captures"""

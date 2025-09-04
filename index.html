@@ -6,100 +6,234 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <style>
     :root {
-      --bg-primary: #0a0e1a;
-      --bg-secondary: #0f1420;
-      --surface-glass: rgba(255, 255, 255, 0.04);
-      --surface-elevated: rgba(255, 255, 255, 0.08);
-      --surface-interactive: rgba(255, 255, 255, 0.12);
+      --bg-primary: #1a1d24;
+      --bg-secondary: #2a2f38;
+      --bg-tertiary: #343a46;
+      --surface-card: #2f3540;
+      --surface-elevated: #3a414e;
       --text-primary: #ffffff;
-      --text-secondary: #b8c5d1;
-      --text-muted: #7a8699;
-      --accent-primary: #4facfe;
-      --accent-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-      --success: #22c55e;
-      --warning: #f59e0b;
-      --error: #ef4444;
-      --border-subtle: rgba(255, 255, 255, 0.08);
-      --border-interactive: rgba(255, 255, 255, 0.16);
+      --text-secondary: #c4c9d1;
+      --text-muted: #888f9a;
+      --border-primary: #404652;
+      --border-secondary: #525863;
+      --success: #16a34a;
+      --success-hover: #15803d;
+      --error: #dc2626;
+      --error-hover: #b91c1c;
+      --accent: #3b82f6;
+      --accent-hover: #2563eb;
       --space-sm: 8px;
       --space-md: 16px;
       --space-lg: 24px;
       --space-xl: 32px;
-      --radius-md: 12px;
-      --radius-lg: 16px;
-      --radius-xl: 20px;
-      --radius-full: 9999px;
-      --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.25);
-      --shadow-glow: 0 0 24px rgba(79, 172, 254, 0.15);
-      --transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
-      --transition-normal: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      --radius-sm: 4px;
+      --radius-md: 8px;
+      --shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
     }
     
     * { box-sizing: border-box; margin: 0; padding: 0; }
     
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      font-size: 15px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Inter', sans-serif;
+      font-size: 14px;
       line-height: 1.5;
       color: var(--text-primary);
-      background: radial-gradient(circle at 20% 10%, rgba(79, 172, 254, 0.1) 0%, transparent 50%),
-                  radial-gradient(circle at 80% 90%, rgba(0, 242, 254, 0.08) 0%, transparent 50%),
-                  linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+      background: var(--bg-primary);
       min-height: 100vh;
-      padding: var(--space-lg);
     }
     
     .header {
-      max-width: 1200px;
-      margin: 0 auto var(--space-xl);
+      background: var(--surface-card);
+      border-bottom: 1px solid var(--border-primary);
+      padding: var(--space-lg);
+    }
+    
+    .header-content {
+      max-width: 1400px;
+      margin: 0 auto;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: var(--space-lg);
-      flex-wrap: wrap;
     }
     
-    .brand { display: flex; align-items: center; gap: var(--space-md); }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: var(--space-md);
+    }
     
     .logo {
-      width: 56px; height: 56px; display: grid; place-items: center;
-      background: var(--accent-gradient); border-radius: var(--radius-lg);
-      font-size: 28px; box-shadow: var(--shadow-md), var(--shadow-glow);
+      width: 40px;
+      height: 40px;
+      background: var(--accent);
+      border-radius: var(--radius-sm);
+      display: grid;
+      place-items: center;
+      font-size: 20px;
     }
     
     .brand-text h1 {
-      font-size: 28px; font-weight: 700;
-      background: var(--accent-gradient); -webkit-background-clip: text; 
-      background-clip: text; -webkit-text-fill-color: transparent;
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--text-primary);
     }
     
-    .subtitle { color: var(--text-secondary); font-size: 14px; font-weight: 500; }
+    .subtitle {
+      color: var(--text-muted);
+      font-size: 12px;
+      font-weight: 500;
+    }
     
     .status {
-      display: flex; align-items: center; gap: var(--space-sm);
-      padding: var(--space-md) var(--space-lg); background: var(--surface-glass);
-      border: 1px solid var(--border-subtle); border-radius: var(--radius-full);
-      backdrop-filter: blur(12px); font-size: 13px; box-shadow: var(--shadow-md);
+      background: var(--surface-elevated);
+      border: 1px solid var(--border-primary);
+      border-radius: var(--radius-sm);
+      padding: var(--space-sm) var(--space-md);
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-secondary);
     }
     
-    .container {
-      max-width: 1200px; margin: 0 auto;
-      display: grid; gap: var(--space-lg);
+    .main-content {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: var(--space-lg);
+      display: grid;
+      gap: var(--space-lg);
     }
     
-    .config-card {
-      background: var(--surface-glass); border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-lg); padding: var(--space-xl);
-      backdrop-filter: blur(12px); box-shadow: var(--shadow-md);
+    .video-section {
+      background: var(--surface-card);
+      border: 1px solid var(--border-primary);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow);
     }
     
-    .card-header { 
-      display: flex; align-items: center; gap: var(--space-md); 
-      margin-bottom: var(--space-lg); 
+    .video-header {
+      padding: var(--space-lg);
+      border-bottom: 1px solid var(--border-primary);
     }
     
-    .card-icon { font-size: 24px; }
-    .card-header h3 { font-size: 18px; font-weight: 700; }
+    .video-header h2 {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+    
+    .video-container {
+      padding: var(--space-lg);
+      text-align: center;
+      min-height: 400px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg-primary);
+    }
+    
+    #preview {
+      max-width: 100%;
+      max-height: 600px;
+      border: 1px solid var(--border-secondary);
+      border-radius: var(--radius-sm);
+      background: var(--bg-secondary);
+    }
+    
+    .video-placeholder {
+      color: var(--text-muted);
+      font-size: 16px;
+    }
+    
+    .progress-section {
+      padding: var(--space-lg);
+      border-top: 1px solid var(--border-primary);
+      background: var(--surface-elevated);
+    }
+    
+    .progress-container {
+      margin-bottom: var(--space-lg);
+    }
+    
+    .progress-bar {
+      width: 100%;
+      height: 8px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-primary);
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+      margin-bottom: var(--space-sm);
+    }
+    
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      background: var(--accent);
+      transition: width 0.3s ease;
+    }
+    
+    .progress-text {
+      font-family: monospace;
+      font-size: 12px;
+      color: var(--text-muted);
+      text-align: center;
+    }
+    
+    .control-buttons {
+      display: flex;
+      justify-content: center;
+      gap: var(--space-md);
+    }
+    
+    .btn {
+      padding: var(--space-md) var(--space-xl);
+      border: none;
+      border-radius: var(--radius-sm);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      min-width: 120px;
+    }
+    
+    .btn-start {
+      background: var(--success);
+      color: white;
+    }
+    
+    .btn-start:hover {
+      background: var(--success-hover);
+    }
+    
+    .btn-stop {
+      background: var(--error);
+      color: white;
+    }
+    
+    .btn-stop:hover {
+      background: var(--error-hover);
+    }
+    
+    .config-section {
+      background: var(--surface-card);
+      border: 1px solid var(--border-primary);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow);
+    }
+    
+    .config-header {
+      padding: var(--space-lg);
+      border-bottom: 1px solid var(--border-primary);
+    }
+    
+    .config-header h3 {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+    
+    .config-content {
+      padding: var(--space-lg);
+    }
     
     .form-row {
       display: grid;
@@ -108,186 +242,174 @@
       margin-bottom: var(--space-lg);
     }
     
-    .form-group { margin-bottom: var(--space-lg); }
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-sm);
+    }
     
-    .form-group label { 
-      display: block; font-weight: 600; margin-bottom: var(--space-sm); 
-      color: var(--text-primary); 
+    .form-group label {
+      font-weight: 500;
+      color: var(--text-secondary);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
     }
     
     .form-control {
-      width: 100%; padding: var(--space-md);
-      background: var(--surface-elevated); border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-md); color: var(--text-primary);
-      font-size: 15px; transition: all var(--transition-fast);
+      width: 100%;
+      padding: var(--space-md);
+      background: var(--surface-elevated);
+      border: 1px solid var(--border-primary);
+      border-radius: var(--radius-sm);
+      color: var(--text-primary);
+      font-size: 14px;
+      transition: all 0.2s ease;
     }
     
     .form-control:focus {
-      outline: none; border-color: var(--accent-primary);
-      box-shadow: 0 0 0 3px rgba(79, 172, 254, 0.15);
-      background: var(--surface-interactive);
+      outline: none;
+      border-color: var(--accent);
+      background: var(--bg-tertiary);
     }
     
-    .control-panel { 
-      text-align: center; margin-top: var(--space-xl);
+    select.form-control {
+      background-color: var(--surface-elevated);
+      color: var(--text-primary);
     }
     
-    .start-button {
-      display: inline-flex; align-items: center; gap: var(--space-md);
-      padding: var(--space-lg) var(--space-xl); background: var(--accent-gradient);
-      color: white; border: none; border-radius: var(--radius-full);
-      font-size: 18px; font-weight: 700; cursor: pointer;
-      transition: all var(--transition-normal); box-shadow: var(--shadow-md);
-      min-width: 200px;
-    }
-    
-    .start-button:hover { 
-      transform: translateY(-2px); 
-      box-shadow: 0 16px 48px rgba(0, 0, 0, 0.35); 
-    }
-    
-    .start-button.danger { 
-      background: linear-gradient(135deg, var(--error) 0%, #dc2626 100%); 
-    }
-    
-    .progress-container { margin-top: var(--space-lg); max-width: 400px; margin-left: auto; margin-right: auto; }
-    
-    .progress-bar {
-      width: 100%; height: 12px; background: var(--surface-elevated);
-      border: 1px solid var(--border-subtle); border-radius: var(--radius-full);
-      overflow: hidden; margin-bottom: var(--space-sm);
-    }
-    
-    .progress-fill {
-      height: 100%; width: 0%;
-      background: var(--accent-gradient);
-      transition: width var(--transition-normal);
-    }
-    
-    .progress-text { 
-      font-family: monospace; font-size: 14px; color: var(--text-muted); 
+    select.form-control option {
+      background-color: var(--bg-secondary);
+      color: var(--text-primary);
     }
     
     .toast-container {
-      position: fixed; top: var(--space-lg); right: var(--space-lg);
-      z-index: 1000; display: flex; flex-direction: column; gap: var(--space-sm);
+      position: fixed;
+      top: var(--space-lg);
+      right: var(--space-lg);
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-sm);
     }
     
     .toast {
-      background: var(--surface-glass); border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-lg); padding: var(--space-lg); 
-      backdrop-filter: blur(16px); box-shadow: var(--shadow-md);
-      transform: translateX(100%); animation: slideIn var(--transition-normal) forwards;
+      background: var(--surface-card);
+      border: 1px solid var(--border-primary);
+      border-radius: var(--radius-sm);
+      padding: var(--space-md);
+      box-shadow: var(--shadow);
+      transform: translateX(100%);
+      animation: slideIn 0.3s forwards;
+      min-width: 300px;
     }
     
     .toast.success { border-left: 4px solid var(--success); }
     .toast.error { border-left: 4px solid var(--error); }
-    .toast.warning { border-left: 4px solid var(--warning); }
+    .toast.warning { border-left: 4px solid var(--accent); }
     
-    @keyframes slideIn { to { transform: translateX(0); } }
-    
-    select, select:focus {
-      background-color: var(--surface-elevated) !important;
-      color: var(--text-primary) !important;
-    }
-    
-    select option { 
-      background-color: var(--bg-secondary) !important; 
-      color: var(--text-primary) !important; 
+    @keyframes slideIn {
+      to { transform: translateX(0); }
     }
     
     @media (max-width: 768px) {
-      body { padding: var(--space-md); }
-      .header { flex-direction: column; text-align: center; }
+      .main-content { padding: var(--space-md); }
       .form-row { grid-template-columns: 1fr; }
+      .header-content { flex-direction: column; gap: var(--space-md); }
+      .control-buttons { flex-direction: column; align-items: center; }
     }
   </style>
 </head>
 <body>
   <header class="header">
-    <div class="brand">
-      <div class="logo">🦪</div>
-      <div class="brand-text">
-        <h1>Oyster Detection</h1>
-        <p class="subtitle">YOLO Detection System</p>
+    <div class="header-content">
+      <div class="brand">
+        <div class="logo">🦪</div>
+        <div class="brand-text">
+          <h1>Oyster Detection System</h1>
+          <p class="subtitle">Professional YOLO Detection</p>
+        </div>
       </div>
-    </div>
-    <div class="status-panel">
       <div id="status" class="status">
         <span class="status-text">Ready</span>
       </div>
     </div>
   </header>
 
-  <main class="container">
-    <section class="config-card">
-      <div class="card-header">
-        <div class="card-icon">⚙️</div>
-        <h3>Detection Configuration</h3>
+  <main class="main-content">
+    <section class="video-section">
+      <div class="video-header">
+        <h2>Detection Stream</h2>
       </div>
-      
-      <div class="form-row">
-        <div class="form-group">
-          <label for="mode">Mode</label>
-          <select id="mode" class="form-control">
-            <option value="stereo">Stereo</option>
-            <option value="mono">Mono</option>
-          </select>
-        </div>
-        
-        <div class="form-group">
-          <label for="model">Model</label>
-          <select id="model" class="form-control"></select>
+      <div class="video-container">
+        <img id="preview" alt="Detection stream" style="display:none;" />
+        <div id="videoPlaceholder" class="video-placeholder">
+          Detection stream will appear here during processing
         </div>
       </div>
-      
-      <div class="form-row">
-        <div class="form-group">
-          <label for="left">Left Source</label>
-          <select id="left" class="form-control"></select>
-        </div>
-        
-        <div class="form-group" id="rightCol">
-          <label for="right">Right Source</label>
-          <select id="right" class="form-control"></select>
-        </div>
-      </div>
-      
-      <div class="form-row">
-        <div class="form-group">
-          <label for="conf">Confidence</label>
-          <input id="conf" class="form-control" type="number" min="0" max="1" step="0.01" value="0.25">
-        </div>
-        
-        <div class="form-group">
-          <label for="iou">IoU</label>
-          <input id="iou" class="form-control" type="number" min="0" max="1" step="0.01" value="0.45">
-        </div>
-        
-        <div class="form-group">
-          <label for="output">Output Directory</label>
-          <input id="output" class="form-control" value="outputs/">
-        </div>
-      </div>
-
-      <div class="control-panel">
-
+      <div class="progress-section">
         <div class="progress-container">
           <div class="progress-bar">
             <div id="bar" class="progress-fill"></div>
           </div>
           <div id="progText" class="progress-text">0/0 — 0.0 fps</div>
         </div>
-
-        <div style="margin-top:16px; text-align:center">
-          <img id="preview" alt="Live preview" style="max-width:100%; border:1px solid var(--border-subtle); border-radius:12px" />
+        <div class="control-buttons">
+          <button id="startBtn" class="btn btn-start" onclick="toggleRun()">
+            <span class="btn-text">Start Detection</span>
+          </button>
         </div>
+      </div>
+    </section>
 
-        <button id="startBtn" class="start-button" onclick="toggleRun()">
-          <span>🚀</span>
-          <span class="btn-text">Start Detection</span>
-        </button>
-
+    <section class="config-section">
+      <div class="config-header">
+        <h3>Detection Configuration</h3>
+      </div>
+      <div class="config-content">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="mode">Detection Mode</label>
+            <select id="mode" class="form-control">
+              <option value="stereo">Stereo Vision</option>
+              <option value="mono">Mono Vision</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label for="model">Detection Model</label>
+            <select id="model" class="form-control"></select>
+          </div>
+        </div>
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label for="left">Primary Source</label>
+            <select id="left" class="form-control"></select>
+          </div>
+          
+          <div class="form-group" id="rightCol">
+            <label for="right">Secondary Source</label>
+            <select id="right" class="form-control"></select>
+          </div>
+        </div>
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label for="conf">Confidence Threshold</label>
+            <input id="conf" class="form-control" type="number" min="0" max="1" step="0.01" value="0.25">
+          </div>
+          
+          <div class="form-group">
+            <label for="iou">IoU Threshold</label>
+            <input id="iou" class="form-control" type="number" min="0" max="1" step="0.01" value="0.45">
+          </div>
+          
+          <div class="form-group">
+            <label for="output">Output Directory</label>
+            <input id="output" class="form-control" value="outputs/">
+          </div>
+        </div>
       </div>
     </section>
   </main>
@@ -296,9 +418,9 @@
 
   <script>
     const qs = id => document.getElementById(id);
-    let polling = null, running = false, previewTimer = null; // preview solo durante detection
+    let polling = null, running = false, previewTimer = null;
 
-    function toast(msg, type='success', ms=2200) {
+    function toast(msg, type='success', ms=3000) {
       const container = qs('toastContainer');
       const toast = document.createElement('div');
       toast.className = 'toast ' + type;
@@ -346,9 +468,7 @@
           return;
         }
 
-        // >>> AGGIUNTA: pulizia jpg prima di avviare una nuova detection <<<
         await fetch('/api/clear_frames', { method: 'POST' });
-        // <<< FINE AGGIUNTA >>>
         
         const response = await fetch('/api/start', {
           method: 'POST',
@@ -363,25 +483,20 @@
         }
         
         running = true;
-        btn.classList.add('danger');
-        btn.querySelector('.btn-text').textContent = 'Stop';
+        btn.className = 'btn btn-stop';
+        btn.querySelector('.btn-text').textContent = 'Stop Detection';
         startPolling();
-        toast('Detection started');
+        toast('Detection started', 'success');
         
       } else {
-        // >>> AGGIUNTA: conferma stop con cancellazione dei jpg <<<
-        const sure = confirm('Sei sicuro? Fermando ora perderai il progresso e verranno eliminati i frame .jpg salvati finora.');
+        const sure = confirm('Are you sure? Stopping now will lose progress and delete saved frames.');
         if (!sure) return;
-        // <<< FINE AGGIUNTA >>>
 
         await fetch('/api/stop', { method: 'POST' });
-
-        // >>> AGGIUNTA: elimina i jpg generati finora <<<
         await fetch('/api/clear_frames', { method: 'POST' });
-        // <<< FINE AGGIUNTA >>>
 
         running = false;
-        btn.classList.remove('danger');
+        btn.className = 'btn btn-start';
         btn.querySelector('.btn-text').textContent = 'Start Detection';
         stopPolling();
         toast('Detection stopped', 'warning');
@@ -391,12 +506,22 @@
     function startPolling() {
       if (polling) return;
 
-      // Avvia il refresh della preview SOLO durante la detection
       if (!previewTimer) {
         previewTimer = setInterval(() => {
           const img = qs('preview');
+          const placeholder = qs('videoPlaceholder');
           if (img) {
-            img.src = '/api/last_frame?ts=' + Date.now(); // anti-cache
+            img.src = '/api/last_frame?ts=' + Date.now();
+            img.style.display = 'block';
+            placeholder.style.display = 'none';
+            img.onload = () => {
+              img.style.display = 'block';
+              placeholder.style.display = 'none';
+            };
+            img.onerror = () => {
+              img.style.display = 'none';
+              placeholder.style.display = 'block';
+            };
           }
         }, 500);
       }
@@ -416,7 +541,7 @@
           
           if (!running) {
             const btn = qs('startBtn');
-            btn.classList.remove('danger');
+            btn.className = 'btn btn-start';
             btn.querySelector('.btn-text').textContent = 'Start Detection';
             stopPolling();
           }
@@ -430,9 +555,14 @@
     function stopPolling() {
       if (polling) { clearInterval(polling); polling = null; }
       if (previewTimer) { clearInterval(previewTimer); previewTimer = null; }
+      
+      const img = qs('preview');
+      const placeholder = qs('videoPlaceholder');
+      img.style.display = 'none';
+      placeholder.style.display = 'block';
     }
 
-    // Initialize (non avvia alcuna preview)
+    // Initialize
     (async () => {
       try {
         qs('status').querySelector('.status-text').textContent = 'Loading...';
