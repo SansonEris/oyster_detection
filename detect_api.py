@@ -4,7 +4,20 @@ import math
 import time
 import os
 import threading
+import csv
+from datetime import datetime
 
+
+def _make_unique_run_dir(base_out):
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    base = os.path.join(base_out, f"run_{ts}")
+    path = base
+    idx = 1
+    while os.path.exists(path):
+        path = f"{base}_{idx}"
+        idx += 1
+    os.makedirs(path, exist_ok=True)
+    return path
 class OysterDetector:
     def __init__(self, model_path, mode, left_video, right_video=None, 
                  confidence=0.25, iou=0.45, output_dir="outputs/"):
@@ -16,7 +29,10 @@ class OysterDetector:
         self.iou = iou
         self.output_dir = output_dir
         
-        # Status tracking
+        
+        # Create unique run directory for this session
+        self.output_dir = _make_unique_run_dir(self.output_dir)
+        self.run_started_at = datetime.now().strftime('%Y-%m-%d %H:%M:%S')# Status tracking
         self.running = False
         self.frames_processed = 0
         self.total_frames = 0
@@ -37,6 +53,11 @@ class OysterDetector:
         self.log_file = os.path.join(self.output_dir, "detection_log.txt")
         with open(self.log_file, 'w') as f:
             f.write("Frame,Oysters_Total,Oysters_Left,Oysters_Right,FPS,Timestamp\n")
+        # Per-detection CSV
+        self.detections_csv = os.path.join(self.output_dir, 'detections.csv')
+        with open(self.detections_csv, 'w', newline='') as cf:
+            cw = csv.writer(cf)
+            cw.writerow(['frame','side','class_id','class_name','confidence','x1','y1','x2','y2','cx','cy','w','h','timestamp'])
     
     def _init_video_captures(self):
         """Initialize video captures"""
@@ -98,42 +119,42 @@ class OysterDetector:
         # Draw white text
         cv2.putText(img, text, (x, y), font, font_scale, (255, 255, 255), thickness, cv2.LINE_AA)
     
-    def process_frame(self, img, prefix=""):
-        """Process a single frame and return annotated image with oyster count"""
-        # Configure YOLO parameters
+    def process_frame(self, img, side_label='mono'):
+        """Process a single frame and return annotated image, oyster count, and detections list"""
         results = self.model(img, stream=True, conf=self.confidence, iou=self.iou)
-        
         oyster_count = 0
-        
+        detections = []
         for r in results:
             boxes = r.boxes
             if boxes is not None:
                 for box in boxes:
-                    # Bounding Box
                     x1, y1, x2, y2 = box.xyxy[0]
                     x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
-                    
-                    # Draw red bounding box
                     self.draw_red_rectangle(img, x1, y1, x2, y2)
-                    
-                    # Confidence
                     conf = float(box.conf[0])
                     conf_txt = math.ceil(conf * 100) / 100
-                    
-                    # Class
                     cls = int(box.cls[0])
-                    if 0 <= cls < len(self.classNames):
-                        label = f'{self.classNames[cls]} {conf_txt}'
-                    else:
-                        label = f'class_{cls} {conf_txt}'
-                    
-                    # Draw white text with red background
+                    cls_name = self.classNames[cls] if 0 <= cls < len(self.classNames) else f'class_{cls}'
+                    label = f'{cls_name} {conf_txt}'
                     self.put_text_with_background(img, label, (x1, y1 - 10))
-                    
                     oyster_count += 1
-        
-        return img, oyster_count
+                    w = x2 - x1
+                    h = y2 - y1
+                    cx = x1 + w/2
+                    cy = y1 + h/2
+                    detections.append((side_label, cls, cls_name, conf_txt, x1, y1, x2, y2, cx, cy, w, h))
+        return img, oyster_count, detections
     
+    def _append_detections_csv(self, frame_idx, detections):
+        ts = time.strftime('%Y-%m-%d %H:%M:%S')
+        if not detections:
+            return
+        with open(self.detections_csv, 'a', newline='') as cf:
+            cw = csv.writer(cf)
+            for d in detections:
+                side, cls, cls_name, conf_txt, x1, y1, x2, y2, cx, cy, w, h = d
+                cw.writerow([frame_idx, side, cls, cls_name, conf_txt, x1, y1, x2, y2, cx, cy, w, h, ts])
+
     def log_detection_data(self, frame_num, total_oysters, left_oysters=0, right_oysters=0, fps=0.0):
         """Log detection data to file"""
         timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
@@ -160,7 +181,7 @@ class OysterDetector:
                 
                 # Process frames
                 if self.mode == "mono":
-                    processed_frame, oyster_count = self.process_frame(frame_left)
+                    processed_frame, oyster_count, dets = self.process_frame(frame_left, 'mono')
                     
                     # Save frame
                     output_path = os.path.join(self.output_dir, f"frame_{self.frames_processed:06d}.jpg")
@@ -173,12 +194,13 @@ class OysterDetector:
                         self.fps = round(self.frames_processed / elapsed, 1) if elapsed > 0 else 0.0
                     
                     # Log data
+                    self._append_detections_csv(self.frames_processed, dets)
                     self.log_detection_data(self.frames_processed, oyster_count, oyster_count, 0, self.fps)
                 
                 elif self.mode == "stereo":
                     # Process both frames
-                    processed_left, oyster_count_left = self.process_frame(frame_left)
-                    processed_right, oyster_count_right = self.process_frame(frame_right)
+                    processed_left, oyster_count_left, dets_left = self.process_frame(frame_left, 'left')
+                    processed_right, oyster_count_right, dets_right = self.process_frame(frame_right, 'right')
                     
                     # Combine frames side by side
                     # Resize frames to same height if needed
@@ -205,6 +227,7 @@ class OysterDetector:
                         self.fps = round(self.frames_processed / elapsed, 1) if elapsed > 0 else 0.0
                     
                     # Log data
+                    self._append_detections_csv(self.frames_processed, dets_left + dets_right)
                     self.log_detection_data(self.frames_processed, total_oysters, oyster_count_left, oyster_count_right, self.fps)
             
         except Exception as e:
@@ -275,7 +298,9 @@ class OysterDetector:
             with open(summary_path, 'w') as f:
                 f.write("=== OYSTER DETECTION SUMMARY ===\n")
                 f.write(f"Mode: {self.mode}\n")
-                f.write(f"Model: {os.path.basename(self.model.ckpt_path) if hasattr(self.model, 'ckpt_path') else 'Unknown'}\n")
+                f.write(f"Run Directory: {self.output_dir}\n")
+                f.write(f"Started At: {self.run_started_at}\n")
+                f.write(f"Model: {os.path.basename(self.model.ckpt_path) if hasattr(self.model, 'ckpt_path') else os.path.basename(getattr(self.model, 'model', 'Unknown'))}\n")
                 f.write(f"Total Frames Processed: {total_frames}\n")
                 f.write(f"Total Oysters Detected: {total_oysters}\n")
                 f.write(f"Average Oysters per Frame: {avg_oysters_per_frame:.2f}\n")

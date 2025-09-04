@@ -109,12 +109,24 @@ def serve_outputs(filename):
     """Serve output files"""
     return send_from_directory('outputs', filename)
 
+
 @app.route('/api/last_frame')
 def last_frame():
-    frames = sorted([f for f in os.listdir('outputs') if f.endswith('.jpg')])
-    if not frames:
-        return ('', 204)
-    return send_from_directory('outputs', frames[-1])
+    base = 'outputs'
+    # Find latest run directory by mtime (directories starting with 'run_')
+    runs = [os.path.join(base, d) for d in os.listdir(base) if os.path.isdir(os.path.join(base, d)) and d.startswith('run_')]
+    if runs:
+        latest_run = max(runs, key=os.path.getmtime)
+        frames = sorted([f for f in os.listdir(latest_run) if f.endswith('.jpg')])
+        if not frames:
+            return ('', 204)
+        return send_from_directory(latest_run, frames[-1])
+    else:
+        # backward-compat: search directly in outputs/
+        frames = sorted([f for f in os.listdir(base) if f.endswith('.jpg')])
+        if not frames:
+            return ('', 204)
+        return send_from_directory(base, frames[-1])
 
 # >>> AGGIUNTA: endpoint per cancellare tutte le .jpg in outputs/ <<<
 @app.route('/api/clear_frames', methods=['POST'])

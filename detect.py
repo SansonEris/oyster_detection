@@ -4,6 +4,8 @@ import math
 import time
 import os
 import argparse
+import csv
+from datetime import datetime
 
 def draw_red_rectangle(img, x1, y1, x2, y2, thickness=2):
     """Draw red rectangle with rounded corners effect"""
@@ -50,7 +52,20 @@ def put_text_with_background(img, text, pos, font_scale=0.6, thickness=2):
     # Draw white text
     cv2.putText(img, text, (x, y), font, font_scale, (255, 255, 255), thickness, cv2.LINE_AA)
 
+
+def _make_unique_run_dir(base_out):
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    base = os.path.join(base_out, f"run_{ts}")
+    path = base
+    idx = 1
+    while os.path.exists(path):
+        path = f"{base}_{idx}"
+        idx += 1
+    os.makedirs(path, exist_ok=True)
+    return path
+
 def main():
+
     # Argument parser per parametri configurabili
     parser = argparse.ArgumentParser(description='Oyster Detection with YOLO')
     parser.add_argument('--model', default='models/best_yolo8.onnx', help='Path to YOLO model')
@@ -85,6 +100,10 @@ def main():
     
     # Crea cartella di output
     os.makedirs(args.output, exist_ok=True)
+    # Unique run directory for this session
+    args.output = _make_unique_run_dir(args.output)
+    run_started_at = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    print(f"Output run dir: {args.output}")
     
     # Classi del modello
     classNames = ["Oyster- Indeterminate", "Oyster-Closed", "Oyster-Open"]
@@ -93,46 +112,50 @@ def main():
     log_file = os.path.join(args.output, "detection_log.txt")
     with open(log_file, 'w') as f:
         f.write("Frame,Oysters_Total,Oysters_Left,Oysters_Right,FPS,Timestamp\n")
+    detections_csv = os.path.join(args.output, 'detections.csv')
+    with open(detections_csv, 'w', newline='') as cf:
+        cw = csv.writer(cf)
+        cw.writerow(['frame','side','class_id','class_name','confidence','x1','y1','x2','y2','cx','cy','w','h','timestamp'])
     
     frame_count = 0
     start_time = time.time()
     running = True
     
-    def process_frame(img, prefix=""):
-        """Processa un singolo frame e restituisce l'immagine annotata e il conteggio ostriche"""
-        # Inferenza YOLO con parametri configurabili
+    def process_frame(img, side_label='mono'):
+        """Processa un singolo frame e restituisce immagine annotata, conteggio ostriche e lista detection"""
         results = model(img, stream=True, conf=args.conf, iou=args.iou)
-        
         oyster_count = 0
-        
+        detections = []
         for r in results:
             boxes = r.boxes
             if boxes is not None:
                 for box in boxes:
-                    # Bounding Box
                     x1, y1, x2, y2 = box.xyxy[0]
                     x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
-                    
-                    # Draw red bounding box
                     draw_red_rectangle(img, x1, y1, x2, y2)
-
-                    # Confidence
                     conf = float(box.conf[0])
                     conf_txt = math.ceil(conf * 100) / 100
-
-                    # Classe
                     cls = int(box.cls[0])
-                    if 0 <= cls < len(classNames):
-                        label = f'{classNames[cls]} {conf_txt}'
-                    else:
-                        label = f'class_{cls} {conf_txt}'
-
-                    # Draw white text with red background
+                    cls_name = classNames[cls] if 0 <= cls < len(classNames) else f'class_{cls}'
+                    label = f'{cls_name} {conf_txt}'
                     put_text_with_background(img, label, (x1, y1 - 10))
-                    
                     oyster_count += 1
-        
-        return img, oyster_count
+                    w = x2 - x1
+                    h = y2 - y1
+                    cx = x1 + w/2
+                    cy = y1 + h/2
+                    detections.append((side_label, cls, cls_name, conf_txt, x1, y1, x2, y2, cx, cy, w, h))
+        return img, oyster_count, detections
+
+    def append_detections_csv(frame_idx, detections):
+        ts = time.strftime('%Y-%m-%d %H:%M:%S')
+        if not detections:
+            return
+        with open(detections_csv, 'a', newline='') as cf:
+            cw = csv.writer(cf)
+            for d in detections:
+                side, cls, cls_name, conf_txt, x1, y1, x2, y2, cx, cy, w, h = d
+                cw.writerow([frame_idx, side, cls, cls_name, conf_txt, x1, y1, x2, y2, cx, cy, w, h, ts])
 
     def log_detection_data(frame_num, total_oysters, left_oysters=0, right_oysters=0, fps=0.0):
         """Log detection data to file"""
@@ -157,7 +180,7 @@ def main():
         
         # Processa i frame
         if args.mode == 'mono':
-            processed_frame, oyster_count = process_frame(frame_left)
+            processed_frame, oyster_count, dets = process_frame(frame_left, 'mono')
             
             # Salva il frame
             output_path = os.path.join(args.output, f"frame_{frame_count:06d}.jpg")
@@ -168,6 +191,7 @@ def main():
             fps = frame_count / elapsed if elapsed > 0 else 0
             
             # Log data
+            append_detections_csv(frame_count, dets)
             log_detection_data(frame_count, oyster_count, oyster_count, 0, round(fps, 1))
             
             # Mostra il frame
@@ -178,8 +202,8 @@ def main():
             
         elif args.mode == 'stereo':
             # Processa entrambi i frame
-            processed_left, oyster_count_left = process_frame(frame_left)
-            processed_right, oyster_count_right = process_frame(frame_right)
+            processed_left, oyster_count_left, dets_left = process_frame(frame_left, 'left')
+            processed_right, oyster_count_right, dets_right = process_frame(frame_right, 'right')
             
             # Combina i frame side-by-side
             h1, w1 = processed_left.shape[:2]
@@ -204,6 +228,7 @@ def main():
             fps = frame_count / elapsed if elapsed > 0 else 0
             
             # Log data
+            append_detections_csv(frame_count, dets_left + dets_right)
             log_detection_data(frame_count, oyster_count, oyster_count_left, oyster_count_right, round(fps, 1))
             
             # Mostra il frame combinato
@@ -278,6 +303,8 @@ def create_summary_log(output_dir, log_file, args, total_frames, avg_fps):
         with open(summary_path, 'w') as f:
             f.write("=== OYSTER DETECTION SUMMARY ===\n")
             f.write(f"Mode: {args.mode}\n")
+            f.write(f"Run Directory: {args.output}\n")
+            f.write(f"Started At: {run_started_at}\n")
             f.write(f"Model: {os.path.basename(args.model)}\n")
             f.write(f"Total Frames Processed: {total_frames}\n")
             f.write(f"Total Oysters Detected: {total_oysters}\n")

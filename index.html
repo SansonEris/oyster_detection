@@ -489,11 +489,10 @@
         toast('Detection started', 'success');
         
       } else {
-        const sure = confirm('Are you sure? Stopping now will lose progress and delete saved frames.');
+        const sure = confirm('Are you sure?');
         if (!sure) return;
 
         await fetch('/api/stop', { method: 'POST' });
-        await fetch('/api/clear_frames', { method: 'POST' });
 
         running = false;
         btn.className = 'btn btn-start';
