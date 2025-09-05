@@ -1,6 +1,7 @@
 # --- models: tieni solo questo file ---
 models/*
 !models/best_yolo8.onnx
+!models/Yolo11m.onnx
 !models/.gitkeep
 
 # --- outputs e videos restano fuori ---
