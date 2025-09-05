@@ -1,11 +1,9 @@
 # --- models: tieni solo questo file ---
 models/*
 !models/best_yolo8.onnx
-!videos/ostriche_acqua_recoaro_1/video_combined.mp4
-!videos/ostriche_acqua_recoaro_1/video_left.mp4
-!videos/ostriche_acqua_recoaro_1/video_right.mp4
 !models/.gitkeep
-
+!videos/TEST_LEFT_2.mp4
+!videos/TEST_RIGHT_2.mp4
 # --- outputs e videos restano fuori ---
 outputs/*
 !outputs/.gitkeep

@@ -127,8 +127,6 @@ class OysterDetector:
             else:
                 cw.writerow(['frame','side','class_id','class_name','confidence','x1','y1','x2','y2','cx','cy','w','h','timestamp'])
     
-
-
     def _load_stereo_calibration(self, calibration_path):
         """Carica parametri di calibrazione stereo dal file del CalibrationCamera.py"""
         try:
@@ -143,83 +141,101 @@ class OysterDetector:
             T  = ensure_1d(get_any(data, "T"))
             Q  = to_mat(get_any(data, "Q"), (4,4))
             
-            # Mappe di rettifica
+            # Mappe di rettifica (se già calcolate)
             map1_l = get_any(data, "map1_l", "mapLx")
             map2_l = get_any(data, "map2_l", "mapLy")
             map1_r = get_any(data, "map1_r", "mapRx")
             map2_r = get_any(data, "map2_r", "mapRy")
             
-            # Parametri rettifica
+            # Parametri di proiezione rettificati (se presenti)
             PL = to_mat(get_any(data, "PL", "P1"))
             PR = to_mat(get_any(data, "PR", "P2"))
-            
+
             # Validazioni minime
-            if any(p is None for p in [KL, KR, DL, DR, R, T, Q]):
+            if any(p is None for p in [KL, KR, DL, DR, R, T]):
                 print("ERRORE: Parametri di calibrazione mancanti")
                 return
             
-            # Crea mappe di rettifica se non presenti
+            # Leggi la size reale dei video correnti
+            cap_temp = cv2.VideoCapture(self.left_video)
+            ret, frame0 = cap_temp.read()
+            cap_temp.release()
+            if not ret:
+                print("ERRORE: impossibile leggere un frame per determinare la size")
+                return
+            h0, w0 = frame0.shape[:2]
+            cur_size = (w0, h0)
+
+            # Controllo esistenza mappe e loro size
             have_maps = all(m is not None for m in [map1_l, map2_l, map1_r, map2_r])
-            if not have_maps:
-                print("Mappe di rettifica non trovate, le genero...")
-                # Determina dimensioni dalla prima immagine
-                cap_temp = cv2.VideoCapture(self.left_video)
-                ret, frame = cap_temp.read()
-                cap_temp.release()
-                if ret:
-                    h, w = frame.shape[:2]
-                    size = (w, h)
-                    
+
+            if have_maps:
+                saved_size = (map1_l.shape[1], map1_l.shape[0])
+                if saved_size != cur_size:
+                    # rigenera mappe per la size dei video correnti
                     RL = to_mat(get_any(data, "RL", "R1"))
                     RR = to_mat(get_any(data, "RR", "R2"))
-                    
-                    if RL is None or RR is None or PL is None or PR is None:
-                        flags = cv2.CALIB_ZERO_DISPARITY
-                        RL, RR, PL, PR, Q, roiL, roiR = cv2.stereoRectify(
-                            KL, DL, KR, DR, size, R, T, flags=flags, alpha=0
+                    if RL is None or RR is None or PL is None or PR is None or Q is None:
+                        RL, RR, PL, PR, Q, _, _ = cv2.stereoRectify(
+                            KL, DL, KR, DR, cur_size, R, T,
+                            flags=cv2.CALIB_ZERO_DISPARITY, alpha=0
                         )
-                    
-                    map1_l, map2_l = cv2.initUndistortRectifyMap(KL, DL, RL, PL, size, cv2.CV_32FC1)
-                    map1_r, map2_r = cv2.initUndistortRectifyMap(KR, DR, RR, PR, size, cv2.CV_32FC1)
-            
-            # Salva parametri per uso successivo
+                    map1_l, map2_l = cv2.initUndistortRectifyMap(KL, DL, RL, PL, cur_size, cv2.CV_32FC1)
+                    map1_r, map2_r = cv2.initUndistortRectifyMap(KR, DR, RR, PR, cur_size, cv2.CV_32FC1)
+                    size = cur_size
+                else:
+                    size = saved_size
+            else:
+                # Mappe assenti: ricavo/impongo size e genero mappe
+                size = cur_size
+                RL = to_mat(get_any(data, "RL", "R1"))
+                RR = to_mat(get_any(data, "RR", "R2"))
+                if RL is None or RR is None or PL is None or PR is None or Q is None:
+                    RL, RR, PL, PR, Q, _, _ = cv2.stereoRectify(
+                        KL, DL, KR, DR, size, R, T,
+                        flags=cv2.CALIB_ZERO_DISPARITY, alpha=0
+                    )
+                map1_l, map2_l = cv2.initUndistortRectifyMap(KL, DL, RL, PL, size, cv2.CV_32FC1)
+                map1_r, map2_r = cv2.initUndistortRectifyMap(KR, DR, RR, PR, size, cv2.CV_32FC1)
+
+            # Salva parametri per uso successivo (size è SEMPRE definita e coerente ai video)
             self.stereo_params = {
                 'map1_l': map1_l, 'map2_l': map2_l,
                 'map1_r': map1_r, 'map2_r': map2_r,
-                'Q': Q
+                'Q': Q,
+                'size': size
             }
-            
+
             # Info focale e baseline
             fx_rect = float(PL[0,0]) if PL is not None else float(KL[0,0])
             fy_rect = float(PL[1,1]) if PL is not None else float(KL[1,1])
             baseline_units = float(np.linalg.norm(T))
-            
             self.stereo_params['fx'] = fx_rect
             self.stereo_params['fy'] = fy_rect
             self.stereo_params['baseline'] = baseline_units
-            
+
             print(f"Calibrazione stereo caricata: fx={fx_rect:.2f}, fy={fy_rect:.2f}, baseline={baseline_units:.2f}cm")
-            
-            # Setup stereo matcher
+
+            # Matcher robusto (grayscale)
+            bs = 5
             self.stereo_matcher = cv2.StereoSGBM_create(
                 minDisparity=0,
-                numDisparities=128,
-                blockSize=5,
-                P1=8*3*5*5,
-                P2=32*3*5*5,
-                speckleWindowSize=50,
-                speckleRange=32,
+                numDisparities=128,          # multiplo di 16: range ampio
+                blockSize=bs,                # kernel più stabile di 3
+                P1=8*1*bs*bs,                # channels=1 (gray)
+                P2=32*1*bs*bs,               # channels=1 (gray)
+                speckleWindowSize=120,
+                speckleRange=24,
                 disp12MaxDiff=1,
                 uniquenessRatio=10
             )
-            
             self.stereo_enabled = True
             print("Size estimation stereo abilitata")
-            
+
         except Exception as e:
             print(f"Errore caricamento calibrazione stereo: {e}")
             self.stereo_enabled = False
-    
+
     def _init_video_captures(self):
         """Initialize video captures"""
         self.cap_left = cv2.VideoCapture(self.left_video)
@@ -283,7 +299,10 @@ class OysterDetector:
     def calculate_size_from_stereo(self, x1, y1, x2, y2, rect_l, rect_r):
         """Calcola dimensioni usando stereo vision come in size_estimation_video.py"""
         if not self.stereo_enabled:
+            print("DEBUG: Stereo non abilitato")
             return None, None, None
+    
+        print(f"DEBUG: Calcolo stereo per bbox ({x1},{y1},{x2},{y2})")
         
         try:
             # Converti in scala di grigi
@@ -303,10 +322,11 @@ class OysterDetector:
             roiZ = roiZ[np.isfinite(roiZ)]
             
             if roiZ.size == 0:
+                print("DEBUG: ROI depth vuota")
                 return None, None, None
             
-            # Depth mediano della ROI
             Z_med = float(np.median(roiZ))
+            print(f"DEBUG: Depth mediano: {Z_med}")    
             
             # Calcola dimensioni reali dalle dimensioni pixel
             w_px = (x2 - x1)
@@ -315,6 +335,7 @@ class OysterDetector:
             W_real = (w_px * Z_med) / self.stereo_params['fx']
             H_real = (h_px * Z_med) / self.stereo_params['fy']
             
+            print(f"DEBUG: Dimensioni calcolate W:{W_real:.2f}, H:{H_real:.2f}, D:{Z_med:.2f}")
             return W_real, H_real, Z_med
             
         except Exception as e:
@@ -330,6 +351,11 @@ class OysterDetector:
             (side, cls, class_name, conf_txt, x1, y1, x2, y2, cx, cy, w, h, width_cm, height_cm, depth_cm)
         L’overlay mostra SOLO W/H/D (in cm) quando disponibili.
         """
+        if side_label == 'left' and self.stereo_enabled:
+            print(f"DEBUG: Processing {side_label}, stereo_enabled={self.stereo_enabled}")
+            print(f"DEBUG: rect_l is not None: {rect_l is not None}")
+            print(f"DEBUG: rect_r is not None: {rect_r is not None}")
+
         results = self.model(img, stream=True, conf=self.confidence, iou=self.iou)
         oyster_count = 0
         detections = []
@@ -406,6 +432,25 @@ class OysterDetector:
         self.running = True
         start_time = time.time()
         
+        # Determina se serve ridimensionamento
+        need_resize = False
+        target_size = None
+        
+        if self.stereo_enabled:
+            target_size = self.stereo_params['size']  # (640, 480) dalla calibrazione
+            
+            # Verifica dimensioni del video
+            ret, test_frame = self.cap_left.read()
+            if ret:
+                self.cap_left.set(cv2.CAP_PROP_POS_FRAMES, 0)  # Riavvolgi
+                h, w = test_frame.shape[:2]
+                current_size = (w, h)
+                
+                if current_size != target_size:
+                    need_resize = True
+                    print(f"Video: {current_size}, Calibrazione: {target_size}")
+                    print(f"Ridimensionerò tutti i frame da {current_size} a {target_size}")
+        
         try:
             while self.running:
                 # Read frames
@@ -418,6 +463,12 @@ class OysterDetector:
                     ret_right, frame_right = self.cap_right.read()
                     if not ret_right:
                         break
+                
+                # Ridimensiona se necessario PRIMA di qualsiasi processing
+                if need_resize and target_size:
+                    frame_left = cv2.resize(frame_left, target_size)
+                    if self.mode == "stereo":
+                        frame_right = cv2.resize(frame_right, target_size)
                 
                 # Process frames
                 if self.mode == "mono":
@@ -454,7 +505,7 @@ class OysterDetector:
                     processed_right, oyster_count_right, dets_right = self.process_frame(
                         rect_right, 'right', rect_left, rect_right)
                     
-                    # Combine frames side by side come originale
+                    # Combine frames side by side
                     h1, w1 = processed_left.shape[:2]
                     h2, w2 = processed_right.shape[:2]
                     
@@ -465,7 +516,7 @@ class OysterDetector:
                     
                     combined_frame = cv2.hconcat([processed_left, processed_right])
                     
-                    # Save combined frame come originale
+                    # Save combined frame
                     output_path = os.path.join(self.output_dir, f"frame_{self.frames_processed:06d}.jpg")
                     cv2.imwrite(output_path, combined_frame)
                     
