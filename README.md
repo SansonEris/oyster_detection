@@ -105,16 +105,3 @@ Apri il tab **Tools** (`/tools`).
 * **Frames CSV** → da cartella immagini crea della rosbag `frames.csv` (richiede nomi `SSSSSSSSS.NNNNNNNNN.png/jpg`).
 * **Align & Fuse** → allinea `frames.csv` + `gps.csv` (+ opzionale `detections.csv`) e produce `final.csv`.
 * **Heatmap** → genera `outputs/heatmap.html` da `final.csv`.
-
-## Stereo (opzionale)
-
-Per la stima dimensionale abilita la calibrazione stereo se disponibile:
-
-* File consigliato: `calibration/stereo_calibration_data.pkl`
-* In assenza, la detection funziona comunque; verranno omesse le colonne di misura.
-
-## Note utili
-
-* I modelli e i video elencati nella UI vengono letti da `models/*.pt|onnx` e `videos/*.mp4|avi|mov`.
-* Ogni esecuzione pulisce i JPG in `outputs/` dalla sessione precedente e crea una nuova cartella `run_*`.
-* Se un video non si apre, verifica path e codec.
