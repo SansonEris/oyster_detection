@@ -251,31 +251,71 @@ class OysterDetector:
         if not self.cap_left.isOpened():
             raise ValueError("Cannot open left video file")
     
-    def draw_red_rectangle(self, img, x1, y1, x2, y2, thickness=2):
-        """Draw red rectangle with rounded corners effect"""
-        # Main rectangle
-        cv2.rectangle(img, (x1, y1), (x2, y2), (0, 0, 255), thickness)
+    def draw_rectangle(self, img, x1, y1, x2, y2, thickness=2):
+        import numpy as np
+        import cv2
+
+        H, W = img.shape[:2]
+        x1 = int(np.clip(round(x1), 0, W - 1))
+        y1 = int(np.clip(round(y1), 0, H - 1))
+        x2 = int(np.clip(round(x2), 0, W - 1))
+        y2 = int(np.clip(round(y2), 0, H - 1))
+        if x2 < x1: x1, x2 = x2, x1
+        if y2 < y1: y1, y2 = y2, y1
+
+        color = (0, 0, 255)
+        line_type = cv2.LINE_AA  
+
+        cv2.rectangle(img, (x1, y1), (x2, y2), color, thickness, lineType=line_type)
         
-        # Corner decorations for better visibility
-        corner_size = 10
-        # Top-left corner
-        cv2.line(img, (x1, y1), (x1 + corner_size, y1), (0, 0, 255), thickness + 1)
-        cv2.line(img, (x1, y1), (x1, y1 + corner_size), (0, 0, 255), thickness + 1)
+        # DISATTIVATO
+        corner_size = 0  
+        if corner_size > 0:
+            cs = int(min(corner_size, x2 - x1, y2 - y1))
+            if cs > 0:
+                t2 = max(1, thickness + 1)
+                # Top-left
+                cv2.line(img, (x1, y1), (x1 + cs, y1), color, t2, line_type)
+                cv2.line(img, (x1, y1), (x1, y1 + cs), color, t2, line_type)
+                # Top-right
+                cv2.line(img, (x2, y1), (x2 - cs, y1), color, t2, line_type)
+                cv2.line(img, (x2, y1), (x2, y1 + cs), color, t2, line_type)
+                # Bottom-left
+                cv2.line(img, (x1, y2), (x1 + cs, y2), color, t2, line_type)
+                cv2.line(img, (x1, y2), (x1, y2 - cs), color, t2, line_type)
+                # Bottom-right
+                cv2.line(img, (x2, y2), (x2 - cs, y2), color, t2, line_type)
+                cv2.line(img, (x2, y2), (x2, y2 - cs), color, t2, line_type)
+
+    def overlay_oyster_count(self, img, count, margin=12):
+        """Scrive 'Ostriche: N' in alto a sinistra, con sfondo sfocato (modifica img in-place)."""
+        import cv2, numpy as np
+        txt = f"Oysters: {count}"
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        font_scale = 0.7
+        thickness = 2
+
+        (tw, th), base = cv2.getTextSize(txt, font, font_scale, thickness)
+        pad_x, pad_y = 10, 8
+        x1, y1 = margin, margin
+        x2, y2 = x1 + tw + pad_x*2, y1 + th + base + pad_y*2
+
+        H, W = img.shape[:2]
+        x1 = max(0, min(x1, W-1)); x2 = max(0, min(x2, W))
+        y1 = max(0, min(y1, H-1)); y2 = max(0, min(y2, H))
+
+        roi = img[y1:y2, x1:x2]
+        if roi.size:
+            blur = cv2.GaussianBlur(roi, (0, 0), sigmaX=9, sigmaY=9)
+            cv2.addWeighted(blur, 0.85, roi, 0.15, 0.0, dst=roi)
+
+        org = (x1 + pad_x, y1 + pad_y + th)
+        # bordo nero + testo bianco
+        cv2.putText(img, txt, org, font, font_scale, (0,0,0), thickness+2, cv2.LINE_AA)
+        cv2.putText(img, txt, org, font, font_scale, (255,255,255), thickness, cv2.LINE_AA)
         
-        # Top-right corner
-        cv2.line(img, (x2, y1), (x2 - corner_size, y1), (0, 0, 255), thickness + 1)
-        cv2.line(img, (x2, y1), (x2, y1 + corner_size), (0, 0, 255), thickness + 1)
-        
-        # Bottom-left corner
-        cv2.line(img, (x1, y2), (x1 + corner_size, y2), (0, 0, 255), thickness + 1)
-        cv2.line(img, (x1, y2), (x1, y2 - corner_size), (0, 0, 255), thickness + 1)
-        
-        # Bottom-right corner
-        cv2.line(img, (x2, y2), (x2 - corner_size, y2), (0, 0, 255), thickness + 1)
-        cv2.line(img, (x2, y2), (x2, y2 - corner_size), (0, 0, 255), thickness + 1)
-    
     def put_text_with_background(self, img, text, pos, font_scale=0.6, thickness=2):
-        """Put white text with red background"""
+        """Put white text with background"""
         font = cv2.FONT_HERSHEY_SIMPLEX
         
         # Get text size
@@ -287,7 +327,7 @@ class OysterDetector:
         x = max(0, min(x, img.shape[1] - text_width - 10))
         y = max(text_height + 5, min(y, img.shape[0] - 5))
         
-        # Draw red background rectangle
+        # Draw background rectangle
         cv2.rectangle(img, 
                      (x - 5, y - text_height - 5), 
                      (x + text_width + 5, y + baseline + 5), 
@@ -370,7 +410,7 @@ class OysterDetector:
                 x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
 
                 # bbox rossa
-                self.draw_red_rectangle(img, x1, y1, x2, y2)
+                self.draw_rectangle(img, x1, y1, x2, y2)
 
                 # info base (le lasciamo per compatibilità CSV; non verranno mostrate in overlay)
                 conf = float(box.conf[0])
@@ -474,6 +514,7 @@ class OysterDetector:
                 if self.mode == "mono":
                     processed_frame, oyster_count, dets = self.process_frame(frame_left, 'mono')
                     
+                    self.overlay_oyster_count(processed_frame, oyster_count)
                     # Save frame
                     output_path = os.path.join(self.output_dir, f"frame_{self.frames_processed:06d}.jpg")
                     cv2.imwrite(output_path, processed_frame)
@@ -515,13 +556,12 @@ class OysterDetector:
                         processed_right = cv2.resize(processed_right, (int(w2 * target_height / h2), target_height))
                     
                     combined_frame = cv2.hconcat([processed_left, processed_right])
-                    
+
                     # Save combined frame
                     output_path = os.path.join(self.output_dir, f"frame_{self.frames_processed:06d}.jpg")
-                    cv2.imwrite(output_path, combined_frame)
-                    
                     total_oysters = oyster_count_left + oyster_count_right
-                    
+                    self.overlay_oyster_count(combined_frame, total_oysters)
+                    cv2.imwrite(output_path, combined_frame)
                     with self.lock:
                         self.current_oyster_count = total_oysters
                         self.frames_processed += 1
