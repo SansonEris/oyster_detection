@@ -2,13 +2,15 @@
 models/*
 !models/best_yolo8.onnx
 !models/.gitkeep
-!videos/TEST_LEFT_2.mp4
-!videos/TEST_RIGHT_2.mp4
+
 # --- outputs e videos restano fuori ---
 outputs/*
 !outputs/.gitkeep
+
 videos/*
 !videos/.gitkeep
+!videos/TEST_LEFT_2.mp4
+!videos/TEST_RIGHT_2.mp4
 
 __pycache__/
 *.py[cod]
