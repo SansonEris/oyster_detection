@@ -1,38 +1,120 @@
-# Oyster Detection System
+# Oyster Detection System — Guida rapida
 
-Sistema di detection per ostriche utilizzando YOLO con interfaccia web per la configurazione dei parametri.
+Sistema per il rilevamento di ostriche con YOLO, interfaccia web per il setup e strumenti dati.
 
-## Setup
+## Requisiti
 
-### 1. Installazione dipendenze
+* Python 3.10+
+* Dipendenze: `pip install -r requirements.txt`
+
+## File chiave
+
+```
+app.py            # API/Server Flask
+index.html        # UI (Detection + Tools)
+detect_api.py     # Motore di detection (usato da app.py)
+detect.py         # CLI standalone (opzionale)
+models/           # Modelli YOLO
+videos/           # Sorgenti video
+outputs/          # Risultati per run (frame + CSV)
+```
+
+## Struttura del progetto
+
+```
+.
+├── README.md
+├── requirements.txt
+├── app.py
+├── detect.py
+├── detect_api.py
+├── index.html
+├── results.png
+├── detections.csv
+├── final.csv
+├── frames.csv
+├── gitssh
+├── gitssh.pub
+├── gps.csv
+├── outputs
+├── calibration
+│   └── stereo_calibration_data.pkl
+├── models
+│   └── best_yolo8.pt
+├── static
+│   └── app.css
+├── tools
+│   ├── combine_csv.py
+│   ├── data_tools.html
+│   ├── frames_from_images.py
+│   ├── get_gps.py
+│   └── make_heatmap.py
+└── videos
+    ├── TEST_LEFT_2.mp4
+    └── TEST_RIGHT_2.mp4 
+```
+
+## Modelli e video supportati
+
+* **Modelli** (metti in `models/`): `yolo8.onnx`, `yolo8.pt`, `yolo11.onnx`, `yolo11.onnx` 
+* **Video validi** (metti in `videos/`): `TEST_LEFT_2.mp4`, `TEST_RIGHT_2.mp4`
+
+## Avvio (Web UI)
+
+1. Avvia il server:
+
+   ```bash
+   python app.py
+   ```
+2. Apri `http://localhost:5000`.
+3. Tab **Detection** → imposta:
+
+   * **Mode**: `stereo` (o `mono` se vuoi un solo video)
+   * **Model**: `best_yolo8.onnx` (o `best_yolo8.pt`)
+   * **Primary/Secondary**: `TEST_LEFT_2.mp4` / `TEST_RIGHT_2.mp4`
+   * **Conf/IoU**: default 0.25 / 0.45
+   * **Output**: `outputs/`
+4. **Start Detection**. L’anteprima dei frame appare durante l’elaborazione.
+
+### Output per run
+
+* Cartella: `outputs/run_YYYYmmdd_HHMMSS[_N]/`
+* File: `frame_*.jpg`, `detections.csv`, `detection_log.txt`
+
+## Avvio (CLI)
+
+Esecuzione rapida senza UI:
+
 ```bash
-pip install -r requirements.txt
+python detect.py \
+  --model models/best_yolo8.onnx \
+  --mode stereo \
+  --left videos/TEST_LEFT_2.mp4 \
+  --right videos/TEST_RIGHT_2.mp4 \
+  --conf 0.25 --iou 0.45 \
+  --output outputs/
 ```
 
-### 2. Struttura cartelle
-```
-project/
-├── app.py              # API Flask
-├── detect_api.py       # Classe OysterDetector
-├── detect.py           # Script standalone (opzionale)
-├── index.html          # Interfaccia web
-├── requirements.txt    # Dipendenze Python
-├── models/            # Modelli YOLO (.pt, .onnx)
-│   └── best_yolo8.onnx
-├── videos/            # Video sorgente
-│   ├── left.mp4
-│   └── right.mp4
-└── outputs/           # Output generati
-```
+> Per modalità mono: rimuovi `--right` e usa `--mode mono`.
 
-### 3. Aggiunta files
-- Posiziona i tuoi modelli YOLO nella cartella `models/`
-- Posiziona i video da processare nella cartella `videos/`
+## Tools (GPS/Frames/Merge/Heatmap)
 
-### 4. Avvio applicazione web
+Apri il tab **Tools** (`/tools`).
 
-```bash
-python app.py
-```
+* **GPS Logger** → genera `gps.csv` da `mavlink2rest` della blue boat (imposta base URL e Hz). 
+* **Frames CSV** → da cartella immagini crea della rosbag `frames.csv` (richiede nomi `SSSSSSSSS.NNNNNNNNN.png/jpg`).
+* **Align & Fuse** → allinea `frames.csv` + `gps.csv` (+ opzionale `detections.csv`) e produce `final.csv`.
+* **Heatmap** → genera `outputs/heatmap.html` da `final.csv`.
 
-L'interfaccia sarà disponibile su: http://localhost:5000
+## Stereo (opzionale)
+
+Per la stima dimensionale abilita la calibrazione stereo se disponibile:
+
+* File consigliato: `calibration/stereo_calibration_data.pkl`
+* In assenza, la detection funziona comunque; verranno omesse le colonne di misura.
+
+## Note utili
+
+* I modelli e i video elencati nella UI vengono letti da `models/*.pt|onnx` e `videos/*.mp4|avi|mov`.
+* Ogni esecuzione pulisce i JPG in `outputs/` dalla sessione precedente e crea una nuova cartella `run_*`.
+* Se un video non si apre, verifica path e codec.
